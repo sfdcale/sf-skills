@@ -1,0 +1,355 @@
+# Contributing to Salesforce Flow & DevOps Skills
+
+Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to this project.
+
+## 🌟 Ways to Contribute
+
+- 🐛 Report bugs and issues
+- 💡 Suggest new features or enhancements
+- 📝 Improve documentation
+- 🔧 Fix bugs or implement features
+- ✅ Add tests and validation
+- 🎨 Improve skill prompts and workflows
+
+## 🚀 Getting Started
+
+### 1. Fork and Clone
+
+```bash
+# Fork the repository on GitHub, then:
+git clone https://github.com/YOUR_USERNAME/claude-code-salesforce-skills.git
+cd claude-code-salesforce-skills
+```
+
+### 2. Install for Development
+
+```bash
+# Install skills locally for testing
+./install.sh --local
+
+# Or install globally
+./install.sh --global
+```
+
+### 3. Create a Branch
+
+```bash
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/bug-description
+```
+
+## 📝 Making Changes
+
+### Skill Development Guidelines
+
+1. **Follow Existing Structure**: Maintain consistency with existing skills
+2. **Update SKILL.md**: Keep YAML frontmatter accurate
+3. **Document Changes**: Update README and inline documentation
+4. **Test Thoroughly**: Test with real Salesforce orgs if applicable
+5. **Validate**: Run validation scripts before committing
+
+### Validation Checklist
+
+Before submitting changes:
+
+```bash
+# Validate all skills
+cd skills/skill-builder/scripts
+python3 bulk_validate.py
+
+# Check specific skill
+python3 validate_yaml.py path/to/SKILL.md
+
+# Check dependencies
+python3 dependency_manager.py validate --all
+```
+
+### Code Style
+
+- **YAML**: Use 2 spaces for indentation
+- **Markdown**: Follow standard markdown formatting
+- **Bash Scripts**: Follow Google Shell Style Guide
+- **Python**: Follow PEP 8
+
+### Skill Frontmatter Standards
+
+All skills must have valid YAML frontmatter:
+
+```yaml
+---
+name: skill-name              # Required: kebab-case
+description: One line summary # Required: Clear description
+version: X.Y.Z               # Required: Semantic versioning
+author: Your Name            # Recommended
+license: MIT                 # Required
+tags:                        # Recommended
+  - category
+  - purpose
+allowed-tools:              # Required
+  - Bash
+  - Read
+  # ... (only tools you use)
+dependencies:               # Optional
+  - name: dependency-skill
+    version: ">=1.0.0"
+    required: true
+metadata:                   # Recommended
+  format_version: "2.0.0"
+  created: "YYYY-MM-DD"
+  updated: "YYYY-MM-DD"
+---
+```
+
+## 🧪 Testing
+
+### Manual Testing
+
+1. **Install Updated Skill**: Use install/upgrade scripts
+2. **Restart Claude Code**: Load the modified skill
+3. **Test Workflows**: Execute typical use cases
+4. **Verify Output**: Ensure correct behavior
+5. **Test Edge Cases**: Try unusual inputs
+
+### Salesforce-Specific Testing
+
+For sf-deployment and sf-flow-builder:
+
+1. Test with multiple Salesforce orgs (sandbox, scratch orgs)
+2. Verify CLI command execution
+3. Test error handling with invalid metadata
+4. Validate flow XML structure and deployment
+
+## 📊 Commit Guidelines
+
+### Commit Message Format
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types**:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, no logic change)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples**:
+
+```
+feat(sf-flow-builder): Add Platform Event flow template
+
+- Added new template for platform event-triggered flows
+- Updated documentation with usage examples
+- Validated with API 62.0
+
+Closes #123
+```
+
+```
+fix(sf-deployment): Fix dry-run flag in validation
+
+- Changed --check-only to --dry-run for sf CLI v2
+- Updated documentation to reflect modern CLI
+- Tested with sf CLI 2.15.0
+
+Fixes #456
+```
+
+## 🔀 Pull Request Process
+
+### 1. Ensure Quality
+
+- [ ] All validation scripts pass
+- [ ] Documentation is updated
+- [ ] CHANGELOG.md is updated (for features/fixes)
+- [ ] Version numbers bumped appropriately (if applicable)
+- [ ] Commits follow commit message format
+
+### 2. Submit Pull Request
+
+1. Push your branch to your fork
+2. Open a Pull Request against `main` branch
+3. Fill out the PR template completely
+4. Link related issues
+
+### 3. PR Template
+
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Documentation update
+- [ ] Refactoring
+- [ ] Other (describe)
+
+## Testing
+Describe testing performed
+
+## Checklist
+- [ ] Validated with bulk_validate.py
+- [ ] Updated documentation
+- [ ] Updated CHANGELOG.md
+- [ ] Tested manually
+- [ ] No breaking changes (or documented)
+
+## Related Issues
+Closes #XXX
+```
+
+### 4. Code Review
+
+- Respond to reviewer feedback promptly
+- Make requested changes
+- Re-request review after updates
+
+## 🐛 Reporting Bugs
+
+### Bug Report Template
+
+```markdown
+**Describe the bug**
+Clear description of the issue
+
+**To Reproduce**
+Steps to reproduce:
+1. Install skill...
+2. Run command...
+3. Observe error...
+
+**Expected behavior**
+What should happen
+
+**Actual behavior**
+What actually happened
+
+**Environment**
+- Claude Code version:
+- Skill version:
+- OS:
+- Salesforce CLI version (if applicable):
+
+**Logs/Screenshots**
+Include relevant logs or screenshots
+
+**Additional context**
+Any other relevant information
+```
+
+## 💡 Suggesting Features
+
+### Feature Request Template
+
+```markdown
+**Is your feature request related to a problem?**
+Description of the problem
+
+**Describe the solution you'd like**
+Clear description of desired functionality
+
+**Describe alternatives you've considered**
+Other approaches you've thought about
+
+**Use cases**
+How would this be used?
+
+**Additional context**
+Mockups, examples, related projects, etc.
+```
+
+## 📚 Documentation Guidelines
+
+### What to Document
+
+- New features and capabilities
+- Breaking changes
+- Configuration options
+- Usage examples
+- Troubleshooting steps
+
+### Documentation Locations
+
+- **README.md**: Overview, installation, quick start
+- **SKILL.md**: Skill-specific detailed instructions
+- **docs/**: Extended guides and tutorials
+- **examples/**: Working examples
+- **CHANGELOG.md**: Version history
+
+## 🎯 Skill Versioning
+
+Follow [Semantic Versioning](https://semver.org/):
+
+- **MAJOR** (X.0.0): Breaking changes
+- **MINOR** (0.X.0): New features (backwards-compatible)
+- **PATCH** (0.0.X): Bug fixes (backwards-compatible)
+
+### When to Bump Versions
+
+```
+MAJOR: Breaking API changes, required frontmatter changes
+MINOR: New templates, new workflows, new commands
+PATCH: Bug fixes, documentation updates, minor improvements
+```
+
+## 🔒 Security
+
+### Reporting Security Issues
+
+**Do NOT open public issues for security vulnerabilities.**
+
+Email security concerns to: [YOUR_EMAIL]
+
+Include:
+- Description of vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fix (if any)
+
+## 📜 Code of Conduct
+
+### Our Pledge
+
+We pledge to make participation in this project a harassment-free experience for everyone.
+
+### Our Standards
+
+**Positive behavior**:
+- Using welcoming and inclusive language
+- Being respectful of differing viewpoints
+- Gracefully accepting constructive criticism
+- Focusing on what's best for the community
+
+**Unacceptable behavior**:
+- Harassment, trolling, or insulting comments
+- Public or private harassment
+- Publishing private information
+- Other conduct inappropriate in a professional setting
+
+### Enforcement
+
+Project maintainers will enforce these standards and may remove, edit, or reject contributions that violate this code of conduct.
+
+## ❓ Questions?
+
+- Open a [GitHub Discussion](https://github.com/YOUR_USERNAME/claude-code-salesforce-skills/discussions)
+- Check existing [Issues](https://github.com/YOUR_USERNAME/claude-code-salesforce-skills/issues)
+- Review the [README](README.md)
+
+## 🙏 Recognition
+
+Contributors will be acknowledged in:
+- README.md Contributors section
+- CHANGELOG.md for specific contributions
+- GitHub Contributors page
+
+Thank you for contributing! 🎉

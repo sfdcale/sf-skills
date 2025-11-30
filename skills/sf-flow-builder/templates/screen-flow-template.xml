@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <label>{{FLOW_LABEL}}</label>
+    <description>{{FLOW_DESCRIPTION}}</description>
+    <processType>Flow</processType>
+    <status>Draft</status>
+
+    <!-- Start Element -->
+    <start>
+        <locationX>50</locationX>
+        <locationY>50</locationY>
+        <connector>
+            <targetReference>Screen_Welcome</targetReference>
+        </connector>
+    </start>
+
+    <!-- Screen: Welcome -->
+    <screens>
+        <name>Screen_Welcome</name>
+        <label>Welcome Screen</label>
+        <locationX>50</locationX>
+        <locationY>150</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <connector>
+            <targetReference>Screen_Complete</targetReference>
+        </connector>
+        <fields>
+            <name>WelcomeText</name>
+            <fieldType>DisplayText</fieldType>
+            <fieldText>&lt;p&gt;&lt;strong&gt;Welcome to {{FLOW_LABEL}}&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;&lt;p&gt;{{FLOW_DESCRIPTION}}&lt;/p&gt;</fieldText>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+
+    <!-- Screen: Complete -->
+    <screens>
+        <name>Screen_Complete</name>
+        <label>Completion Screen</label>
+        <locationX>50</locationX>
+        <locationY>250</locationY>
+        <allowBack>false</allowBack>
+        <allowFinish>true</allowFinish>
+        <allowPause>false</allowPause>
+        <fields>
+            <name>CompleteText</name>
+            <fieldType>DisplayText</fieldType>
+            <fieldText>&lt;p&gt;&lt;strong&gt;✓ Process Completed Successfully!&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;&lt;p&gt;Thank you for using this flow.&lt;/p&gt;</fieldText>
+        </fields>
+        <showFooter>true</showFooter>
+        <showHeader>true</showHeader>
+    </screens>
+</Flow>

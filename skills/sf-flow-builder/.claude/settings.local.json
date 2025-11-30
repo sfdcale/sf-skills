@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/bin/ls -lah /Users/jvalaiyapathy/.claude/skills/sf-flow-builder)",
+      "Bash(find:*)",
+      "Bash(/bin/ls:*)",
+      "Bash(~/.claude/skills/skill-builder/.venv/bin/python3:*)",
+      "Bash(for skill in */)",
+      "Bash(do if [ ! -f \"$skill/LICENSE\" ])",
+      "Bash(then echo \"Missing LICENSE: $skill%/\")",
+      "Bash(fi)",
+      "Bash(done)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

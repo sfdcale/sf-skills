@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(sf-flow-builder)",
+      "Bash(sf org display:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
