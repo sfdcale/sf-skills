@@ -92,6 +92,13 @@ Expert Salesforce Flow Builder with deep knowledge of best practices, bulkificat
 
 4. **Design structure:** Variables (var/col prefixes), Elements, Flow paths, Error handling (fault paths)
 
+**Screen Flow Button Configuration (CRITICAL for UX):**
+- **First screen**: `allowBack="false"` + `allowFinish="true"` → Shows "Next" button only
+- **Middle screens**: `allowBack="true"` + `allowFinish="true"` → Shows "Previous" + "Next" buttons
+- **Last screen**: `allowBack="true"` (optional) + `allowFinish="true"` → Shows "Finish" button (+ optionally "Previous")
+- **Rule**: Middle screens MUST have `allowFinish="true"` or navigation button disappears (UX breaks)
+- **Connector behavior**: If screen has `<connector>`, the button label is "Next"; if no connector (last screen), label is "Finish"
+
 5. **Suggest Orchestration Pattern (if complex):**
    - Detect: Multiple objects/steps, cross-object updates, conditional logic
    - Suggest: Parent-Child (independent), Sequential (dependent), Conditional (scenarios)
@@ -146,6 +153,7 @@ python3 ~/.claude/skills/sf-flow-builder/validators/naming_validator.py \
 - ⚠️ Unused variables/orphaned elements
 - ⚠️ Loops with field mapping (use Transform for 30-50% gain)
 - ⚠️ Naming conventions violated
+- ⚠️ **Screen flows: Middle screens with allowFinish="false" (UX broken - no Next button)**
 
 **BEST PRACTICES:**
 - ✓ Has description, proper naming, Transform usage, Auto-Layout
