@@ -298,11 +298,10 @@ Always asks before activating:
 │       └── subflow-query-with-retry.xml          # Sub_QueryWithRetry
 │
 ├── validators/                                   # Python validation scripts
-│   ├── enhanced_validator.py                    # 6-category validator (110 pts)
-│   ├── naming_validator.py                      # Naming convention checks (advisory)
-│   ├── security_validator.py                    # Security & governance checks
-│   ├── flow_simulator.py                        # Bulk simulation (200+ records)
-│   └── flow_validator.py                        # Legacy validator (deprecated)
+│   ├── enhanced_validator.py                    # 6-category validator (110 pts) - comprehensive
+│   ├── naming_validator.py                      # Naming convention checks (used by enhanced)
+│   ├── security_validator.py                    # Security & governance checks (used by enhanced)
+│   └── flow_simulator.py                        # Bulk simulation (200+ records)
 │
 ├── generators/
 │   └── doc_generator.py                         # Auto-documentation generator
@@ -356,9 +355,9 @@ Always asks before activating:
 ## Troubleshooting
 
 ### "Validation fails but I can't see the issue"
-Run the Python validator directly:
+Run the comprehensive validator directly:
 ```bash
-python3 ~/.claude/skills/sf-flow-builder/validators/flow_validator.py \
+python3 ~/.claude/skills/sf-flow-builder/validators/enhanced_validator.py \
   force-app/main/default/flows/YourFlow.flow-meta.xml
 ```
 

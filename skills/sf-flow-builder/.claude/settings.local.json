@@ -9,7 +9,8 @@
       "Bash(do if [ ! -f \"$skill/LICENSE\" ])",
       "Bash(then echo \"Missing LICENSE: $skill%/\")",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "WebFetch(domain:www.linkedin.com)"
     ],
     "deny": [],
     "ask": []

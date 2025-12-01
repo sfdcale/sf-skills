@@ -117,7 +117,7 @@ This checklist ensures that Salesforce Flows meet enterprise governance standard
 - [ ] **Security review completed** (if accessing sensitive data)
 - [ ] **Architecture review completed** (if complex orchestration)
 - [ ] **Best practices validated** (all items in this checklist)
-- [ ] **Auto-fix recommendations applied** (from flow_validator.py)
+- [ ] **Auto-fix recommendations applied** (from enhanced_validator.py)
 
 ### 🚦 Deployment Preparation
 
@@ -253,8 +253,7 @@ Approver: [Who approved this exception?]
 ## Resources
 
 ### Tools
-- **flow_validator.py**: Technical validation and scoring
-- **security_validator.py**: Security and permissions checks
+- **enhanced_validator.py**: Comprehensive 6-category validation (includes naming, security, performance, architecture)
 - **flow_simulator.py**: Bulk testing simulation
 
 ### Documentation

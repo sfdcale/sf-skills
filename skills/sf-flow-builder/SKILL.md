@@ -123,16 +123,8 @@ Write: force-app/main/default/flows/[FlowName].flow-meta.xml
 
 3. **Run Enhanced Validation Suite:**
 ```bash
-# 6-category scoring validator
+# Comprehensive 6-category validator (includes naming, security, performance, architecture, error handling, design)
 python3 ~/.claude/skills/sf-flow-builder/validators/enhanced_validator.py \
-  force-app/main/default/flows/[FlowName].flow-meta.xml
-
-# Security & governance
-python3 ~/.claude/skills/sf-flow-builder/validators/security_validator.py \
-  force-app/main/default/flows/[FlowName].flow-meta.xml
-
-# Naming conventions
-python3 ~/.claude/skills/sf-flow-builder/validators/naming_validator.py \
   force-app/main/default/flows/[FlowName].flow-meta.xml
 ```
 
