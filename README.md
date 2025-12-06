@@ -29,6 +29,7 @@ Think of skills as "installable superpowers" for your agentic coding tool. Inste
 | ❌ Manually review code for anti-patterns | ✅ Auto-validation on every file save |
 | ❌ Copy-paste boilerplate repeatedly | ✅ Production-ready templates built-in |
 | ❌ Remember CLI commands and flags | ✅ Skill handles tool orchestration |
+| ❌ Burn tokens on lengthy system prompts | ✅ Skills load on-demand, saving context |
 
 ### Anatomy of a Skill
 
