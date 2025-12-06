@@ -12,7 +12,7 @@
     {
       "name": "sf-skills",
       "description": "Salesforce development skills - Apex, Flow, DevOps automation",
-      "source": "..",
+      "source": "./",
       "version": "1.0.0",
       "keywords": ["salesforce", "apex", "flow", "devops"]
     }
