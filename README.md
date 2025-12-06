@@ -6,6 +6,16 @@
 
 A collection of Claude Code skills for Salesforce development, specializing in Apex code generation, Flow automation, and DevOps workflows.
 
+## 🤖 Supported Agentic CLIs
+
+| CLI | Status | |
+|-----|--------|--|
+| **Claude Code** | ✅ Full Support | ![Claude](https://img.shields.io/badge/Anthropic-Claude_Code-191919?logo=anthropic&logoColor=white) |
+| **Agentforce Vibes** | 🔜 Planned | ![Salesforce](https://img.shields.io/badge/Salesforce-Agentforce-00A1E0?logo=salesforce&logoColor=white) |
+| **Google Gemini CLI** | 🔜 Planned | ![Google](https://img.shields.io/badge/Google-Gemini_CLI-4285F4?logo=google&logoColor=white) |
+| **Droid** | 🔜 Planned | ![Droid](https://img.shields.io/badge/Android-Droid-3DDC84?logo=android&logoColor=white) |
+| **Codex** | 🔜 Planned | ![OpenAI](https://img.shields.io/badge/OpenAI-Codex-412991?logo=openai&logoColor=white) |
+
 ## ✨ Available Skills
 
 | Skill | Description | Status |
@@ -16,18 +26,6 @@ A collection of Claude Code skills for Salesforce development, specializing in A
 | **[skill-builder](skill-builder/)** | Claude Code skill creation wizard | ✅ Live |
 
 ## 🚀 Installation
-
-### Quick Install (All Skills)
-
-Get the complete Salesforce development suite:
-
-```bash
-/plugin install Jaganpro/sf-skills
-```
-
-This installs all 4 skills as a bundle.
-
-### Install Individual Skills
 
 First, add the marketplace to Claude Code:
 
