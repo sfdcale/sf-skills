@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "sf-skills",
-      "description": "Complete Salesforce development suite - Apex, Flow, Deployment, and Skill Builder",
+      "description": "Complete Salesforce development suite - Apex, Flow, Deployment, and Skill Builder (install all at once)",
       "source": "./",
       "strict": false,
       "skills": [
@@ -20,6 +20,26 @@
         "./sf-deployment/skills/sf-deployment",
         "./skill-builder/skills/skill-builder"
       ]
+    },
+    {
+      "name": "sf-apex",
+      "description": "Apex code generation and review with 150-point scoring and TAF patterns",
+      "source": "./sf-apex"
+    },
+    {
+      "name": "sf-flow-builder",
+      "description": "Salesforce Flow creation and validation with 110-point scoring",
+      "source": "./sf-flow-builder"
+    },
+    {
+      "name": "sf-deployment",
+      "description": "Salesforce DevOps automation using sf CLI v2",
+      "source": "./sf-deployment"
+    },
+    {
+      "name": "skill-builder",
+      "description": "Interactive wizard for creating Claude Code skills",
+      "source": "./skill-builder"
     }
   ]
 }
