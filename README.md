@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-blue.svg)](https://claude.ai/code)
-[![Salesforce](https://img.shields.io/badge/Salesforce-Apex%20%7C%20Flow%20%7C%20Metadata%20%7C%20DevOps-00A1E0.svg)](https://www.salesforce.com/)
+[![Salesforce](https://img.shields.io/badge/Salesforce-Apex%20%7C%20Flow%20%7C%20Metadata%20%7C%20Data%20%7C%20DevOps-00A1E0.svg)](https://www.salesforce.com/)
 
 A collection of reusable skills for Salesforce development, specializing in Apex code generation, Flow automation, Metadata management, and DevOps workflows. Built for Claude Code with planned support for other agentic coding tools.
 
@@ -62,6 +62,7 @@ sf-apex/
 | **[sf-apex](sf-apex/)** | Apex code generation & review with 150-point scoring | ✅ Live |
 | **[sf-flow-builder](sf-flow-builder/)** | Flow creation & validation with 110-point scoring | ✅ Live |
 | **[sf-metadata](sf-metadata/)** | Metadata generation & org querying with 120-point scoring | ✅ Live |
+| **[sf-data](sf-data/)** | Data operations, SOQL expertise & test data factories with 130-point scoring | ✅ Live |
 | **[sf-deployment](sf-deployment/)** | DevOps & CI/CD automation using sf CLI v2 | ✅ Live |
 | **[skill-builder](skill-builder/)** | Claude Code skill creation wizard | ✅ Live |
 
@@ -90,6 +91,9 @@ First, add the marketplace to Claude Code:
 
 # Metadata management (objects, fields, profiles, permission sets)
 /plugin install sf-metadata@sf-skills
+
+# Data operations (SOQL, CRUD, test data factories, bulk operations)
+/plugin install sf-data@sf-skills
 
 # Deployment automation
 /plugin install sf-deployment@sf-skills
@@ -127,16 +131,21 @@ Some skills work together for a complete workflow:
 │  sf-flow-builder │────▶│  sf-metadata    │     │  sf-deployment  │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
         │                       ▲                       ▲
-        │               ┌───────┘                       │
-        │               │                               │
-        └───────────────┼───────────────────────────────┘
-                        │
-┌─────────────────┐     │
-│     sf-apex     │─────┘
-└─────────────────┘
+        │               ┌───────┴───────┐               │
+        │               │               │               │
+        └───────────────┼───────────────┼───────────────┘
+                        │               │
+┌─────────────────┐     │     ┌─────────────────┐
+│     sf-apex     │─────┘     │     sf-data     │
+└─────────────────┘           └─────────────────┘
+        │                             ▲
+        └─────────────────────────────┘
+              (test data generation)
 ```
 
 - **sf-apex** and **sf-flow-builder** can query **sf-metadata** to discover object/field information before generating code
+- **sf-apex** and **sf-flow-builder** can use **sf-data** to generate test data for trigger/flow testing
+- **sf-data** can query **sf-metadata** for object structure before creating test records
 - **sf-apex**, **sf-flow-builder**, and **sf-metadata** use **sf-deployment** for deploying to Salesforce orgs
 - Each skill works standalone, but will prompt you to install dependencies if needed
 
@@ -151,6 +160,7 @@ Each skill includes validation hooks that run automatically when you write files
 | sf-flow-builder | `*.flow-meta.xml` | Flow best practices, 110-point scoring, bulk safety |
 | sf-apex | `*.cls`, `*.trigger` | Apex anti-patterns, 150-point scoring, TAF compliance |
 | sf-metadata | `*.object-meta.xml`, `*.field-meta.xml`, etc. | Metadata best practices, 120-point scoring, FLS checks |
+| sf-data | `*.apex`, `*.soql` | SOQL patterns, 130-point scoring, governor limits |
 | skill-builder | `SKILL.md` | YAML frontmatter validation |
 
 Hooks provide **advisory feedback** after writes - they inform but don't block.
@@ -183,6 +193,15 @@ Hooks provide **advisory feedback** after writes - they inform but don't block.
 - Documentation (20 pts)
 - Best Practices (20 pts)
 
+**Data Validation (130 points)**:
+- Query Efficiency (25 pts)
+- Bulk Safety (25 pts)
+- Data Integrity (20 pts)
+- Security & FLS (20 pts)
+- Test Patterns (15 pts)
+- Cleanup & Isolation (15 pts)
+- Documentation (10 pts)
+
 ## 🔧 Prerequisites
 
 - **Claude Code** (latest version)
@@ -213,6 +232,15 @@ Hooks provide **advisory feedback** after writes - they inform but don't block.
 "Generate a permission set for invoice managers with full CRUD"
 "Create a validation rule to require close date when status is Closed"
 "Describe the Account object in my org and list all custom fields"
+```
+
+### Data Operations
+```
+"Query all Accounts with related Contacts and Opportunities"
+"Create 251 test Account records for trigger bulk testing"
+"Insert 500 records from accounts.csv using Bulk API"
+"Generate test data hierarchy: 10 Accounts with 3 Contacts each"
+"Clean up all test records created today"
 ```
 
 ### Deployment
@@ -254,6 +282,15 @@ Hooks provide **advisory feedback** after writes - they inform but don't block.
 - Org metadata querying via sf CLI v2
 - Cross-skill integration (sf-apex and sf-flow-builder can query metadata)
 
+### sf-data
+- 130-point scoring across 7 categories
+- SOQL expertise (relationships, polymorphic, aggregates)
+- Test data factory templates for standard objects
+- Bulk API 2.0 operations (import, export, upsert, delete)
+- Record tracking and cleanup/rollback capabilities
+- Anonymous Apex execution for complex data setup
+- Cross-skill integration (sf-apex and sf-flow-builder use for testing)
+
 ### sf-deployment
 - Modern `sf` CLI v2 commands (not legacy sfdx)
 - Dry-run validation (`--dry-run`) before deployment
@@ -283,12 +320,12 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | Skill | Description | Status |
 |-------|-------------|--------|
 | `sf-metadata` | Objects, fields, profiles, permission sets | ✅ Live |
+| `sf-data` | SOQL, CRUD, test data factories, bulk operations | ✅ Live |
 | `sf-security` | Sharing rules, org-wide defaults, encryption | 📋 Planned |
 | `sf-integration` | REST, SOAP, Platform Events | 📋 Planned |
 | `sf-testing` | Test strategy, mocking, coverage | 📋 Planned |
 | `sf-debugging` | Debug logs, Apex replay | 📋 Planned |
 | `sf-migration` | Org-to-org, metadata comparison | 📋 Planned |
-| `sf-data` | Data migration, ETL, bulk ops | 📋 Planned |
 
 ### 🤖 AI & Automation
 | Skill | Description | Status |
@@ -317,7 +354,7 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | `sf-industry-finserv` | KYC, AML, Wealth Management | 📋 Planned |
 | `sf-industry-revenue` | CPQ, Billing, Revenue Lifecycle | 📋 Planned |
 
-**Total: 22 skills** (5 live ✅, 17 planned 📋)
+**Total: 22 skills** (6 live ✅, 16 planned 📋)
 
 ## Contributing
 
