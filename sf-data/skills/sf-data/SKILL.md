@@ -19,6 +19,43 @@ The sf-data skill provides comprehensive data management capabilities:
 
 ---
 
+## 🔄 Operation Modes
+
+sf-data operates in two distinct modes:
+
+| Mode | Description | Requires Org? | Output |
+|------|-------------|---------------|--------|
+| **Script Generation** | Creates `.apex` files for later execution | ❌ No | Local files in `scripts/data/` |
+| **Remote Execution** | Executes operations directly against org | ✅ Yes | Records in org |
+
+### Script Generation Mode (Local)
+
+Use when:
+- Building reusable test data scripts
+- Creating deployment packages with data setup
+- No org available yet
+
+```bash
+# Output: scripts/data/create-test-accounts.apex
+# Run later with: sf apex run --file scripts/data/create-test-accounts.apex --target-org alias
+```
+
+### Remote Execution Mode (Connected)
+
+Use when:
+- Org is authenticated and available
+- Need immediate data for testing
+- Verifying data after deployment
+
+```bash
+# Direct execution
+sf data create record --sobject Account --values "Name='Test'" --target-org alias
+```
+
+**⚠️ IMPORTANT**: Always confirm which mode the user expects before proceeding!
+
+---
+
 ## Core Responsibilities
 
 1. **Execute SOQL/SOSL Queries** - Write and execute queries with relationship traversal, aggregates, and filters
@@ -94,6 +131,31 @@ DELETE [SELECT Id FROM Custom_Object__c WHERE Name LIKE 'Test%'];
 // Cleanup by created date (safer)
 DELETE [SELECT Id FROM Custom_Object__c WHERE CreatedDate = TODAY AND Name LIKE 'Test%'];
 ```
+
+### Queue/User Prerequisites for Assignment Flows
+
+**⚠️ If your flow assigns records to Queues, the Queues must exist BEFORE testing!**
+
+sf-data **cannot** create Queue metadata. Use sf-metadata for Queues:
+
+```xml
+<!-- force-app/main/default/queues/Sales_Queue.queue-meta.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Sales Queue</name>
+    <queueSobject>
+        <sobjectType>Lead</sobjectType>
+    </queueSobject>
+</Queue>
+```
+
+**Workflow for Queue-Based Testing:**
+1. **sf-metadata**: Create Queue XML files
+2. **sf-deployment**: Deploy Queues to org
+3. **sf-flow-builder**: Create assignment flow (references Queue DeveloperName)
+4. **sf-deployment**: Deploy flow
+5. **sf-data**: Create test records to trigger flow
 
 ---
 
@@ -460,6 +522,128 @@ public class TestDataFactory_Account {
 3. **Use realistic data** - Industry values, proper naming
 4. **Support relationships** - Parent ID parameters for child records
 5. **Include edge cases** - Null values, special characters, boundaries
+
+---
+
+## Extending Factories for Custom Fields
+
+When your objects have custom scoring/status fields, extend the base factory:
+
+### Example: Lead Factory with Custom Scoring Fields
+
+```apex
+/**
+ * Extended Lead factory supporting Lead_Score__c and Lead_Priority__c custom fields
+ */
+public class TestDataFactory_Lead_Extended {
+
+    // Scoring configuration
+    private static final Integer SCORE_HOT_MIN = 70;
+    private static final Integer SCORE_WARM_MIN = 40;
+
+    /**
+     * Create leads with specific scoring profiles
+     * @param profile 'Hot', 'Warm', or 'Cold'
+     * @param count Number of records
+     * @return List of Leads (not inserted)
+     */
+    public static List<Lead> createWithProfile(String profile, Integer count) {
+        List<Lead> leads = new List<Lead>();
+
+        for (Integer i = 0; i < count; i++) {
+            Lead l = buildBaseRecord(i);
+
+            // Apply profile-specific field values
+            switch on profile {
+                when 'Hot' {
+                    l.Industry = 'Technology';
+                    l.NumberOfEmployees = 1500;
+                    l.AnnualRevenue = 5000000;
+                    l.Email = 'hot.lead' + i + '@test.com';
+                    l.Phone = '555-HOT-' + String.valueOf(i).leftPad(4, '0');
+                    // Expected Score: ~100 (Company:30 + Tech:20 + Email:10 + Phone:10 + Revenue:30)
+                }
+                when 'Warm' {
+                    l.Industry = 'Technology';
+                    l.NumberOfEmployees = 500;
+                    l.Email = 'warm.lead' + i + '@test.com';
+                    l.Phone = '555-WRM-' + String.valueOf(i).leftPad(4, '0');
+                    // Expected Score: ~40 (Tech:20 + Email:10 + Phone:10)
+                }
+                when 'Cold' {
+                    l.Industry = 'Retail';
+                    l.NumberOfEmployees = 50;
+                    // Expected Score: ~10 (Email only or Phone only)
+                }
+            }
+
+            leads.add(l);
+        }
+
+        return leads;
+    }
+
+    /**
+     * Create bulk test data with distribution
+     * @param hotCount Number of Hot leads
+     * @param warmCount Number of Warm leads
+     * @param coldCount Number of Cold leads
+     * @return All created leads
+     */
+    public static List<Lead> createWithDistribution(Integer hotCount, Integer warmCount, Integer coldCount) {
+        List<Lead> allLeads = new List<Lead>();
+        allLeads.addAll(createWithProfile('Hot', hotCount));
+        allLeads.addAll(createWithProfile('Warm', warmCount));
+        allLeads.addAll(createWithProfile('Cold', coldCount));
+        return allLeads;
+    }
+
+    private static Lead buildBaseRecord(Integer index) {
+        return new Lead(
+            FirstName = 'Test',
+            LastName = 'Lead' + String.valueOf(index).leftPad(3, '0'),
+            Company = 'Test Company ' + index,
+            Status = 'Open - Not Contacted',
+            LeadSource = 'Web'
+        );
+    }
+}
+```
+
+### Usage in Anonymous Apex Script
+
+```apex
+// Create 251 leads with scoring distribution for bulk trigger testing
+List<Lead> testLeads = TestDataFactory_Lead_Extended.createWithDistribution(
+    50,   // 50 Hot leads (score 70+)
+    100,  // 100 Warm leads (score 40-69)
+    101   // 101 Cold leads (score <40)
+);
+
+insert testLeads;
+System.debug('Created ' + testLeads.size() + ' test leads');
+```
+
+### Pattern for Any Custom Object
+
+```apex
+public static List<Custom_Object__c> createWithCustomFields(Integer count, Map<String, Object> fieldOverrides) {
+    List<Custom_Object__c> records = new List<Custom_Object__c>();
+
+    for (Integer i = 0; i < count; i++) {
+        Custom_Object__c record = buildDefaultRecord(i);
+
+        // Apply custom field overrides
+        for (String fieldName : fieldOverrides.keySet()) {
+            record.put(fieldName, fieldOverrides.get(fieldName));
+        }
+
+        records.add(record);
+    }
+
+    return records;
+}
+```
 
 ---
 

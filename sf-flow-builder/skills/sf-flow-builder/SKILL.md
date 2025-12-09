@@ -7,6 +7,22 @@ description: Creates and validates Salesforce flows using best practices and met
 
 Expert Salesforce Flow Builder with deep knowledge of best practices, bulkification, and Winter '26 (API 62.0) metadata. Create production-ready, performant, secure, and maintainable flows.
 
+## 📋 Quick Reference: Validation Script
+
+**Validate Flow XML before deployment:**
+```bash
+# Path to validation script
+python3 ~/.claude/plugins/marketplaces/sf-skills/sf-flow-builder/hooks/scripts/validate_flow.py <flow-file.xml>
+
+# Example
+python3 ~/.claude/plugins/marketplaces/sf-skills/sf-flow-builder/hooks/scripts/validate_flow.py \
+  force-app/main/default/flows/Auto_Lead_Assignment.flow-meta.xml
+```
+
+**Scoring**: 110 points across 6 categories. Minimum 88 (80%) for deployment.
+
+---
+
 ## Core Responsibilities
 
 1. **Flow Generation**: Create well-structured Flow metadata XML from requirements
@@ -88,7 +104,18 @@ Use **AskUserQuestion** to gather:
 
 Load via: `Read: ../../templates/[template].xml` (relative to SKILL.md location)
 
-**Naming**: API Name = PascalCase_With_Underscores (e.g., `Account_Creation_Screen_Flow`)
+**Naming Convention** (Recommended Prefixes):
+
+| Flow Type | Prefix | Example |
+|-----------|--------|---------|
+| Record-Triggered (After) | `Auto_` | `Auto_Lead_Assignment`, `Auto_Account_Update` |
+| Record-Triggered (Before) | `Before_` | `Before_Lead_Validate`, `Before_Contact_Default` |
+| Screen Flow | `Screen_` | `Screen_New_Customer`, `Screen_Case_Intake` |
+| Scheduled | `Sched_` | `Sched_Daily_Cleanup`, `Sched_Weekly_Report` |
+| Platform Event | `Event_` | `Event_Order_Completed` |
+| Autolaunched | `Sub_` or `Util_` | `Sub_Send_Email`, `Util_Validate_Address` |
+
+**Format**: `[Prefix]_Object_Action` using PascalCase (e.g., `Auto_Lead_Priority_Assignment`)
 
 **Screen Flow Button Config** (CRITICAL):
 | Screen | allowBack | allowFinish | Result |
@@ -290,25 +317,69 @@ Get Records: Query Contacts where AccountId = $Record.Id
 <!-- Step 1: Get the Case Owner -->
 <recordLookups>
     <name>Get_Case_Owner</name>
+    <label>Get Case Owner</label>
+    <locationX>0</locationX>
+    <locationY>0</locationY>
+    <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
+    <connector>
+        <targetReference>Get_Manager</targetReference>
+    </connector>
+    <faultConnector>
+        <targetReference>Error_Handler</targetReference>
+    </faultConnector>
+    <filterLogic>and</filterLogic>
+    <filters>
+        <field>Id</field>
+        <operator>EqualTo</operator>
+        <value><elementReference>$Record.OwnerId</elementReference></value>
+    </filters>
+    <getFirstRecordOnly>true</getFirstRecordOnly>
     <object>User</object>
     <queriedFields>Id</queriedFields>
     <queriedFields>Name</queriedFields>
-    <queriedFields>ManagerId</queriedFields>  <!-- Get the ID only -->
+    <queriedFields>ManagerId</queriedFields>
+    <storeOutputAutomatically>false</storeOutputAutomatically>
+    <outputReference>rec_CaseOwner</outputReference>
 </recordLookups>
 
 <!-- Step 2: Get the Manager (separate query) -->
 <recordLookups>
     <name>Get_Manager</name>
-    <object>User</object>
+    <label>Get Manager</label>
+    <locationX>0</locationX>
+    <locationY>0</locationY>
+    <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
+    <connector>
+        <targetReference>Next_Element</targetReference>
+    </connector>
+    <faultConnector>
+        <targetReference>Error_Handler</targetReference>
+    </faultConnector>
+    <filterLogic>and</filterLogic>
     <filters>
         <field>Id</field>
         <operator>EqualTo</operator>
         <value><elementReference>rec_CaseOwner.ManagerId</elementReference></value>
     </filters>
+    <getFirstRecordOnly>true</getFirstRecordOnly>
+    <object>User</object>
     <queriedFields>Id</queriedFields>
     <queriedFields>Name</queriedFields>
+    <queriedFields>Email</queriedFields>
+    <storeOutputAutomatically>false</storeOutputAutomatically>
+    <outputReference>rec_Manager</outputReference>
 </recordLookups>
 ```
+
+### recordLookups Best Practices
+
+| Element | Recommendation | Why |
+|---------|----------------|-----|
+| `getFirstRecordOnly` | Set to `true` for single-record queries | Avoids collection overhead |
+| `storeOutputAutomatically` | Set to `false`, use `outputReference` | Prevents data leaks, explicit variable |
+| `assignNullValuesIfNoRecordsFound` | Set to `false` | Preserves previous variable value |
+| `faultConnector` | Always include | Handle query failures gracefully |
+| `filterLogic` | Use `and` for multiple filters | Clear filter behavior |
 
 ### Critical Requirements
 - **API 62.0**: Latest features

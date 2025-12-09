@@ -168,6 +168,25 @@ Next Steps: Run tests, verify behavior, monitor logs
 
 ## Trigger Actions Framework (TAF)
 
+### ⚠️ CRITICAL PREREQUISITES
+
+**Before using TAF patterns, the target org MUST have:**
+
+1. **Trigger Actions Framework Package Installed**
+   - GitHub: https://github.com/mitchspano/apex-trigger-actions-framework
+   - Install via: `sf package install --package 04tKZ000000gUEFYA2 --target-org [alias] --wait 10`
+   - Or use unlocked package from repository
+
+2. **Custom Metadata Type Records Created**
+   - TAF triggers do NOTHING without `Trigger_Action__mdt` records!
+   - Each trigger action class needs a corresponding CMT record
+
+**If TAF is NOT installed, use the Standard Trigger Pattern instead (see below).**
+
+---
+
+### TAF Pattern (Requires Package)
+
 All triggers MUST use the Trigger Actions Framework pattern:
 
 **Trigger** (one per object):
@@ -193,6 +212,111 @@ public class TA_Account_SetDefaults implements TriggerAction.BeforeInsert {
     }
 }
 ```
+
+**Multi-Interface Action Class** (BeforeInsert + BeforeUpdate):
+```apex
+public class TA_Lead_CalculateScore implements TriggerAction.BeforeInsert, TriggerAction.BeforeUpdate {
+
+    // Called on new record creation
+    public void beforeInsert(List<Lead> newList) {
+        calculateScores(newList);
+    }
+
+    // Called on record updates
+    public void beforeUpdate(List<Lead> newList, List<Lead> oldList) {
+        // Only recalculate if scoring fields changed
+        List<Lead> leadsToScore = new List<Lead>();
+        Map<Id, Lead> oldMap = new Map<Id, Lead>(oldList);
+
+        for (Lead newLead : newList) {
+            Lead oldLead = oldMap.get(newLead.Id);
+            if (scoringFieldsChanged(newLead, oldLead)) {
+                leadsToScore.add(newLead);
+            }
+        }
+
+        if (!leadsToScore.isEmpty()) {
+            calculateScores(leadsToScore);
+        }
+    }
+
+    private void calculateScores(List<Lead> leads) {
+        // Scoring logic here
+    }
+
+    private Boolean scoringFieldsChanged(Lead newLead, Lead oldLead) {
+        return newLead.Industry != oldLead.Industry ||
+               newLead.NumberOfEmployees != oldLead.NumberOfEmployees;
+    }
+}
+```
+
+### ⚠️ REQUIRED: Custom Metadata Type Records
+
+**TAF triggers will NOT execute without `Trigger_Action__mdt` records!**
+
+For each trigger action class, create a Custom Metadata record:
+
+| Field | Value | Description |
+|-------|-------|-------------|
+| Label | TA Lead Calculate Score | Human-readable name |
+| Trigger_Action_Name__c | TA_Lead_CalculateScore | Apex class name |
+| Object__c | Lead | sObject API name |
+| Context__c | Before Insert | Trigger context |
+| Order__c | 1 | Execution order (lower = first) |
+| Active__c | true | Enable/disable without deploy |
+
+**Example Custom Metadata XML** (`Trigger_Action.TA_Lead_CalculateScore_BI.md-meta.xml`):
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>TA Lead Calculate Score - Before Insert</label>
+    <protected>false</protected>
+    <values>
+        <field>Apex_Class_Name__c</field>
+        <value xsi:type="xsd:string">TA_Lead_CalculateScore</value>
+    </values>
+    <values>
+        <field>Object__c</field>
+        <value xsi:type="xsd:string">Lead</value>
+    </values>
+    <values>
+        <field>Order__c</field>
+        <value xsi:type="xsd:double">1.0</value>
+    </values>
+    <values>
+        <field>Bypass_Execution__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+</CustomMetadata>
+```
+
+**NOTE**: Create separate CMT records for each context (Before Insert, Before Update, etc.)
+
+---
+
+### Standard Trigger Pattern (No Package Required)
+
+**Use this when TAF package is NOT installed in the target org:**
+
+```apex
+trigger LeadTrigger on Lead (before insert, before update) {
+
+    LeadScoringService scoringService = new LeadScoringService();
+
+    if (Trigger.isBefore) {
+        if (Trigger.isInsert) {
+            scoringService.calculateScores(Trigger.new);
+        }
+        else if (Trigger.isUpdate) {
+            scoringService.recalculateIfChanged(Trigger.new, Trigger.oldMap);
+        }
+    }
+}
+```
+
+**Pros**: No external dependencies, works in any org
+**Cons**: Less maintainable for complex triggers, no declarative control
 
 See [../../docs/trigger-actions-framework.md](../../docs/trigger-actions-framework.md) for full patterns.
 
@@ -325,10 +449,66 @@ Request: "Create 251 test Account records with varying Industries for trigger bu
   - Creates bulk test records for trigger boundary testing
   - Install: `/plugin install github:Jaganpro/sf-skills/sf-data`
 
+## Common Exception Types Reference
+
+When writing test classes, use these specific exception types:
+
+| Exception Type | When to Use | Example |
+|----------------|-------------|---------|
+| `DmlException` | Insert/update/delete failures | `Assert.isTrue(e.getMessage().contains('FIELD_CUSTOM_VALIDATION'))` |
+| `QueryException` | SOQL query failures | Malformed query, no rows for assignment |
+| `NullPointerException` | Null reference access | Accessing field on null object |
+| `ListException` | List operation failures | Index out of bounds |
+| `MathException` | Mathematical errors | Division by zero |
+| `TypeException` | Type conversion failures | Invalid type casting |
+| `LimitException` | Governor limit exceeded | Too many SOQL queries, DML statements |
+| `CalloutException` | HTTP callout failures | Timeout, invalid endpoint |
+| `JSONException` | JSON parsing failures | Malformed JSON |
+| `InvalidParameterValueException` | Invalid method parameters | Bad input values |
+
+**Test Example:**
+```apex
+@IsTest
+static void testShouldThrowExceptionForMissingRequiredField() {
+    try {
+        // Code that should throw
+        insert new Account(); // Missing Name
+        Assert.fail('Expected DmlException was not thrown');
+    } catch (DmlException e) {
+        Assert.isTrue(e.getMessage().contains('REQUIRED_FIELD_MISSING'),
+            'Expected REQUIRED_FIELD_MISSING but got: ' + e.getMessage());
+    }
+}
+```
+
+---
+
+## Cross-Skill Dependency Checklist
+
+**Before deploying Apex code, verify these prerequisites:**
+
+| Prerequisite | Check Command | Required For |
+|--------------|---------------|--------------|
+| TAF Package | `sf package installed list --target-org alias` | TAF trigger pattern |
+| Custom Fields | `sf sobject describe --sobject Lead --target-org alias` | Field references in code |
+| Permission Sets | `sf org list metadata --metadata-type PermissionSet` | FLS for custom fields |
+| Trigger_Action__mdt | Check Setup → Custom Metadata Types | TAF trigger execution |
+
+**Common Deployment Order:**
+```
+1. sf-metadata: Create custom fields
+2. sf-metadata: Create Permission Sets
+3. sf-deployment: Deploy fields + Permission Sets
+4. sf-apex: Deploy Apex classes/triggers
+5. sf-data: Create test data
+```
+
+---
+
 ## Notes
 
 - **API Version**: 62.0 required
-- **TAF Required**: All triggers must use Trigger Actions Framework
+- **TAF Optional**: Prefer TAF when package is installed, use standard trigger pattern as fallback
 - **Scoring**: Block deployment if score < 67
 
 ---

@@ -333,6 +333,53 @@ Next Steps:
 
 ---
 
+## Field Template Tips
+
+### Number Field: Omit Empty Defaults
+
+**⚠️ Don't include `<defaultValue>` if it's empty or zero - Salesforce ignores it:**
+
+```xml
+<!-- ❌ WRONG: Empty default is ignored, adds noise -->
+<CustomField>
+    <fullName>Score__c</fullName>
+    <type>Number</type>
+    <precision>3</precision>
+    <scale>0</scale>
+    <defaultValue></defaultValue>  <!-- Remove this! -->
+</CustomField>
+
+<!-- ✅ CORRECT: Omit defaultValue entirely if not needed -->
+<CustomField>
+    <fullName>Score__c</fullName>
+    <type>Number</type>
+    <precision>3</precision>
+    <scale>0</scale>
+</CustomField>
+
+<!-- ✅ CORRECT: Include defaultValue only if you need a specific value -->
+<CustomField>
+    <fullName>Priority__c</fullName>
+    <type>Number</type>
+    <precision>1</precision>
+    <scale>0</scale>
+    <defaultValue>3</defaultValue>  <!-- Meaningful default -->
+</CustomField>
+```
+
+### Standard vs Custom Object Paths
+
+**⚠️ Standard objects use different path than custom objects:**
+
+| Object Type | Path Example |
+|-------------|--------------|
+| Standard (Lead) | `objects/Lead/fields/Lead_Score__c.field-meta.xml` |
+| Custom | `objects/MyObject__c/fields/MyField__c.field-meta.xml` |
+
+**Common Mistake**: Using `Lead__c` (with suffix) for standard Lead object.
+
+---
+
 ## Field Type Selection Guide
 
 | Data Type | Salesforce Field | Use When |
@@ -516,24 +563,54 @@ sf schema generate field --label "My Field" --object Account
 
 ---
 
-## Manual Validation Command
+## 📋 Quick Reference: Validation Script
 
-If the automatic post-write validation hook doesn't trigger, run validation manually:
+**Validate metadata XML before deployment:**
 
 ```bash
-# Validate a single metadata file
-python3 /path/to/sf-metadata/hooks/scripts/validate_metadata.py <file_path>
+# Path to validation script
+python3 ~/.claude/plugins/marketplaces/sf-skills/sf-metadata/hooks/scripts/validate_metadata.py <file_path>
 
-# Example
+# Example - Custom Object
 python3 ~/.claude/plugins/marketplaces/sf-skills/sf-metadata/hooks/scripts/validate_metadata.py \
   force-app/main/default/objects/Customer_Feedback__c/Customer_Feedback__c.object-meta.xml
+
+# Example - Custom Field
+python3 ~/.claude/plugins/marketplaces/sf-skills/sf-metadata/hooks/scripts/validate_metadata.py \
+  force-app/main/default/objects/Lead/fields/Lead_Score__c.field-meta.xml
 ```
 
-**Hook Troubleshooting:**
-- Ensure `CLAUDE_PLUGIN_ROOT` environment variable is set
-- Check that hooks.json is properly formatted
-- Verify Python 3 is available in PATH
-- Check hook output in Claude Code logs
+**Scoring**: 120 points across 6 categories. Minimum 84 (70%) for deployment.
+
+---
+
+## Manual Validation When Hooks Don't Fire
+
+**If the automatic post-write validation hook doesn't trigger:**
+
+1. **Check hook status:**
+   ```bash
+   ls -la ~/.claude/plugins/marketplaces/sf-skills/sf-metadata/hooks/
+   cat ~/.claude/plugins/marketplaces/sf-skills/sf-metadata/hooks/hooks.json
+   ```
+
+2. **Run validation manually:**
+   ```bash
+   python3 ~/.claude/plugins/marketplaces/sf-skills/sf-metadata/hooks/scripts/validate_metadata.py <file_path>
+   ```
+
+3. **Troubleshooting Checklist:**
+   - [ ] `CLAUDE_PLUGIN_ROOT` environment variable is set
+   - [ ] hooks.json is properly formatted JSON
+   - [ ] Python 3 is available in PATH
+   - [ ] File path matches hook pattern (`**/*.field-meta.xml`, `**/*.object-meta.xml`)
+   - [ ] Check Claude Code logs for hook errors
+
+**Common Reasons Hooks Don't Fire:**
+- Plugin not properly installed
+- File written outside expected directory
+- Hook pattern doesn't match file path
+- Python not available in system PATH
 
 ---
 
