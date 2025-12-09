@@ -57,6 +57,7 @@ sf-apex/
 | 🚀 | **[sf-deploy](sf-deploy/)** | DevOps & CI/CD automation using sf CLI v2 | ✅ Live |
 | 🤖 | **[sf-ai-agentforce](sf-ai-agentforce/)** | Agentforce agent creation with Agent Script syntax | ✅ Live |
 | 🔐 | **[sf-connected-apps](sf-connected-apps/)** | Connected Apps & External Client Apps with OAuth config | ✅ Live |
+| 📊 | **[sf-diagram](sf-diagram/)** | Mermaid diagrams for OAuth, ERD, integrations & architecture | ✅ Live |
 | 🛠️ | **[skill-builder](skill-builder/)** | Claude Code skill creation wizard | ✅ Live |
 
 ## 🚀 Installation
@@ -83,6 +84,7 @@ flowchart TB
 
     subgraph integration["🔌 Integration"]
         connectedapps["🔐 sf-connected-apps<br/><small>OAuth, ECAs, Security</small>"]
+        diagram["📊 sf-diagram<br/><small>OAuth, ERD, Architecture</small>"]
     end
 
     subgraph development["💻 Development"]
@@ -110,6 +112,8 @@ flowchart TB
     %% Integration relationships
     connectedapps -->|"Named Credentials"| metadata
     connectedapps -->|"deploys"| deploy
+    diagram -->|"queries schema"| metadata
+    diagram -.->|"documents"| connectedapps
 
     %% Development relationships
     apex -->|"queries schema"| metadata
@@ -129,6 +133,7 @@ flowchart TB
     %% Styling
     style agentforce fill:#ec4899,stroke:#db2777,color:#fff
     style connectedapps fill:#f97316,stroke:#ea580c,color:#fff
+    style diagram fill:#0ea5e9,stroke:#0284c7,color:#fff
     style apex fill:#8b5cf6,stroke:#7c3aed,color:#fff
     style flow fill:#6366f1,stroke:#4f46e5,color:#fff
     style metadata fill:#06b6d4,stroke:#0891b2,color:#fff
@@ -218,6 +223,15 @@ Hooks provide **advisory feedback** after writes - they inform but don't block.
 "Generate an agent that calls my Apex service via Flow wrapper"
 ```
 
+### 📊 Diagrams & Documentation
+```
+"Create a JWT Bearer OAuth flow diagram"
+"Generate an ERD for Account, Contact, Opportunity, and Case"
+"Diagram our Salesforce to SAP integration flow"
+"Create a system landscape diagram for our Sales Cloud implementation"
+"Generate a role hierarchy diagram for our sales org"
+```
+
 ### 🚀 Deployment
 ```
 "Deploy my Apex classes to sandbox with tests"
@@ -244,6 +258,7 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | | Skill | Description | Status |
 |--|-------|-------------|--------|
 | 🔐 | `sf-connected-apps` | Connected Apps, ECAs, OAuth configuration | ✅ Live |
+| 📊 | `sf-diagram` | Mermaid diagrams for OAuth, ERD, integrations, architecture | ✅ Live |
 | 🔒 | `sf-security` | Sharing rules, org-wide defaults, encryption | 📋 Planned |
 | 🔗 | `sf-integration` | REST, SOAP, Platform Events | 📋 Planned |
 | 🧪 | `sf-testing` | Test strategy, mocking, coverage | 📋 Planned |
@@ -277,7 +292,7 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | 🏦 | `sf-industry-finserv` | KYC, AML, Wealth Management | 📋 Planned |
 | 💵 | `sf-industry-revenue` | CPQ, Billing, Revenue Lifecycle | 📋 Planned |
 
-**Total: 23 skills** (8 live ✅, 15 planned 📋)
+**Total: 24 skills** (9 live ✅, 15 planned 📋)
 
 ## Contributing
 
