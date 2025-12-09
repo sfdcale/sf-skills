@@ -61,6 +61,46 @@ config:
 
 ---
 
+## ⚠️ CRITICAL: System Instructions Syntax
+
+**System instructions MUST be a single quoted string. The `|` pipe multiline syntax does NOT work in the `system:` block.**
+
+```agentscript
+# ✅ CORRECT - Single quoted string
+system:
+    instructions: "You are a helpful assistant. Be professional and friendly. Never share confidential information."
+    messages:
+        welcome: "Hello!"
+        error: "Sorry, an error occurred."
+
+# ❌ WRONG - Pipe syntax fails with SyntaxError
+system:
+    instructions:
+        | You are a helpful assistant.
+        | Be professional.
+```
+
+**Note**: The `|` pipe syntax ONLY works inside `reasoning: instructions: ->` blocks within topics.
+
+---
+
+## ⚠️ CRITICAL: Escalation Description
+
+**`@utils.escalate` REQUIRES a `description:` on a separate indented line.**
+
+```agentscript
+# ✅ CORRECT - description on separate line
+actions:
+    escalate_to_human: @utils.escalate
+        description: "Transfer to human when customer requests or issue cannot be resolved"
+
+# ❌ WRONG - inline description fails
+actions:
+    escalate: @utils.escalate "description here"
+```
+
+---
+
 ## Workflow (5-Phase Pattern)
 
 ### Phase 1: Requirements Gathering
@@ -275,6 +315,12 @@ config:
 
 **IMPORTANT**: Use `developer_name`, NOT `agent_name`!
 
+**⚠️ default_agent_user Requirements**:
+- Must be a valid username in the target org
+- User must have Agentforce-related permissions
+- Using an invalid user causes "Internal Error" during publish
+- Recommended: Use a dedicated service account or admin user with proper licenses
+
 ### System Block
 
 ```agentscript
@@ -285,7 +331,19 @@ system:
         error: "I'm sorry, something went wrong. Please try again."
 ```
 
-**Note**: System instructions can be a single string (for short instructions) or use `|` multiline format.
+**⚠️ IMPORTANT**: System instructions MUST be a single quoted string. The `|` pipe multiline syntax does NOT work in the `system:` block (it only works in `reasoning: instructions: ->`).
+
+```agentscript
+# ✅ CORRECT - Single quoted string
+system:
+    instructions: "You are a helpful assistant. Be professional. Never share secrets."
+
+# ❌ WRONG - Pipe syntax fails in system block
+system:
+    instructions:
+        | You are a helpful assistant.
+        | Be professional.
+```
 
 ### Variables Block
 
@@ -380,14 +438,14 @@ reasoning:
         | If unclear, ask clarifying questions.
 ```
 
-**Multiline instructions** (prompt-only):
+**System instructions** (must be single string):
 ```agentscript
+# ✅ CORRECT - System instructions as single string
 system:
-    instructions:
-        | You are a helpful assistant.
-        | Be professional and courteous.
-        | Never share confidential information.
+    instructions: "You are a helpful assistant. Be professional and courteous. Never share confidential information."
 ```
+
+**⚠️ NOTE**: The `|` pipe multiline syntax ONLY works inside `reasoning: instructions: ->` blocks, NOT in the top-level `system:` block.
 
 ### Action Definitions
 
@@ -465,6 +523,8 @@ go_checkout: @utils.transition to @topic.checkout
 
 ### Escalation to Human
 
+**⚠️ IMPORTANT**: `@utils.escalate` REQUIRES a `description:` on a separate indented line. The description tells the LLM when to trigger escalation.
+
 ```agentscript
 topic escalation:
     label: "Escalation"
@@ -475,8 +535,12 @@ topic escalation:
             | If a user explicitly asks to transfer, escalate.
             | Acknowledge and apologize for any inconvenience.
         actions:
+            # ✅ CORRECT - description on separate indented line
             escalate_to_human: @utils.escalate
-                description: "Escalate to a human agent"
+                description: "Transfer to human when customer requests or issue cannot be resolved"
+
+# ❌ WRONG - inline description fails
+#     escalate: @utils.escalate "description here"
 ```
 
 ### Conditional Logic
@@ -690,6 +754,9 @@ topic order_processing:
 | Nested `run` | Not supported | Flatten to sequential `run` |
 | Missing bundle-meta.xml | Deployment fails | Create XML alongside .agent |
 | No language block | Deployment fails | Add language block |
+| Pipe syntax in system: | SyntaxError | Use single quoted string for system instructions |
+| Inline escalate description | SyntaxError | Put `description:` on separate indented line |
+| Invalid default_agent_user | Internal Error | Use valid org user with Agentforce permissions |
 
 ---
 
@@ -747,6 +814,9 @@ python3 ~/.claude/plugins/marketplaces/sf-skills/sf-agentforce/hooks/scripts/val
 | `@variables` is plural | `@variable.x` fails | Use `@variables.x` |
 | Boolean capitalization | `true/false` invalid | Use `True/False` |
 | Deploy Command | `sf project deploy` fails | Use `sf agent publish authoring-bundle` |
+| **System Instructions** | Pipe `\|` syntax fails in system: block | Use single quoted string only |
+| **Escalate Description** | Inline description fails | Put `description:` on separate indented line |
+| **Agent User** | Invalid user causes "Internal Error" | Use valid org user with proper permissions |
 
 ---
 
