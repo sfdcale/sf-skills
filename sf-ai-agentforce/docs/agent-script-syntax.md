@@ -476,50 +476,6 @@ topic my_topic:
             | Help the user with their order.
 ```
 
-### Advanced Action Fields
-
-Actions support additional optional fields for fine-grained control:
-
-**Action-level fields:**
-```agentscript
-actions:
-    my_action:
-        description: "Action description"
-        label: "Display Label"
-        require_user_confirmation: False
-        include_in_progress_indicator: False
-        target: "flow://MyFlow"
-```
-
-**Input fields:**
-```agentscript
-inputs:
-    my_input: string
-        description: "Input description"
-        label: "my_input"
-        is_required: True
-        is_user_input: True
-        complex_data_type_name: "lightning__textType"
-```
-
-**Output fields:**
-```agentscript
-outputs:
-    my_output: string
-        description: "Output description"
-        label: "my_output"
-        complex_data_type_name: "lightning__textType"
-        filter_from_agent: False
-        is_used_by_planner: True
-        is_displayable: True
-```
-
-**Lightning Data Types:**
-- `lightning__textType` - Text/String
-- `lightning__numberType` - Number
-- `lightning__booleanType` - Boolean
-- `lightning__dateTimeStringType` - DateTime
-
 ### Target Formats
 
 **Common Target Types:**
