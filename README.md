@@ -160,13 +160,13 @@ flowchart TB
     %% Styling - Tooling (slate-200)
     style skillbuilder fill:#e2e8f0,stroke:#334155,color:#1f2937
 
-    %% Subgraph styling - transparent with dark borders
-    style ai fill:transparent,stroke:#be185d,stroke-dasharray:5
-    style integration fill:transparent,stroke:#c2410c,stroke-dasharray:5
-    style development fill:transparent,stroke:#6d28d9,stroke-dasharray:5
-    style foundation fill:transparent,stroke:#0e7490,stroke-dasharray:5
-    style devops fill:transparent,stroke:#047857,stroke-dasharray:5
-    style tooling fill:transparent,stroke:#334155,stroke-dasharray:5
+    %% Subgraph styling - light fill with dark dashed borders
+    style ai fill:#fdf2f8,stroke:#be185d,stroke-dasharray:5
+    style integration fill:#fff7ed,stroke:#c2410c,stroke-dasharray:5
+    style development fill:#f5f3ff,stroke:#6d28d9,stroke-dasharray:5
+    style foundation fill:#ecfeff,stroke:#0e7490,stroke-dasharray:5
+    style devops fill:#ecfdf5,stroke:#047857,stroke-dasharray:5
+    style tooling fill:#f8fafc,stroke:#334155,stroke-dasharray:5
 ```
 
 ## 🔌 Plugin Features
