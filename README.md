@@ -138,35 +138,35 @@ flowchart TB
     connectedapps -->|"deploys"| deploy
     agentforce -->|"publishes"| deploy
 
-    %% Styling - AI (pink)
-    style agentforce fill:#ec4899,stroke:#db2777,color:#fff
+    %% Styling - AI (pink pastel)
+    style agentforce fill:#fce7f3,stroke:#be185d,color:#1f2937
 
-    %% Styling - Integration (orange/teal)
-    style connectedapps fill:#f97316,stroke:#ea580c,color:#fff
-    style sfintegration fill:#14b8a6,stroke:#0d9488,color:#fff
-    style diagram fill:#0ea5e9,stroke:#0284c7,color:#fff
+    %% Styling - Integration (orange/teal/sky pastel)
+    style connectedapps fill:#ffedd5,stroke:#c2410c,color:#1f2937
+    style sfintegration fill:#ccfbf1,stroke:#0f766e,color:#1f2937
+    style diagram fill:#e0f2fe,stroke:#0369a1,color:#1f2937
 
-    %% Styling - Development (purple/indigo)
-    style apex fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style flow fill:#6366f1,stroke:#4f46e5,color:#fff
+    %% Styling - Development (purple/indigo pastel)
+    style apex fill:#ede9fe,stroke:#6d28d9,color:#1f2937
+    style flow fill:#e0e7ff,stroke:#4338ca,color:#1f2937
 
-    %% Styling - Foundation (cyan/amber)
-    style metadata fill:#06b6d4,stroke:#0891b2,color:#fff
-    style data fill:#f59e0b,stroke:#d97706,color:#fff
+    %% Styling - Foundation (cyan/amber pastel)
+    style metadata fill:#cffafe,stroke:#0e7490,color:#1f2937
+    style data fill:#fef3c7,stroke:#b45309,color:#1f2937
 
-    %% Styling - DevOps (green)
-    style deploy fill:#10b981,stroke:#059669,color:#fff
+    %% Styling - DevOps (green pastel)
+    style deploy fill:#d1fae5,stroke:#047857,color:#1f2937
 
-    %% Styling - Tooling (gray)
-    style skillbuilder fill:#64748b,stroke:#475569,color:#fff
+    %% Styling - Tooling (slate pastel)
+    style skillbuilder fill:#f1f5f9,stroke:#334155,color:#1f2937
 
-    %% Subgraph styling
-    style ai fill:transparent,stroke:#ec4899,stroke-dasharray:5
-    style integration fill:transparent,stroke:#f97316,stroke-dasharray:5
-    style development fill:transparent,stroke:#8b5cf6,stroke-dasharray:5
-    style foundation fill:transparent,stroke:#06b6d4,stroke-dasharray:5
-    style devops fill:transparent,stroke:#10b981,stroke-dasharray:5
-    style tooling fill:transparent,stroke:#64748b,stroke-dasharray:5
+    %% Subgraph styling - transparent with dark borders
+    style ai fill:transparent,stroke:#be185d,stroke-dasharray:5
+    style integration fill:transparent,stroke:#c2410c,stroke-dasharray:5
+    style development fill:transparent,stroke:#6d28d9,stroke-dasharray:5
+    style foundation fill:transparent,stroke:#0e7490,stroke-dasharray:5
+    style devops fill:transparent,stroke:#047857,stroke-dasharray:5
+    style tooling fill:transparent,stroke:#334155,stroke-dasharray:5
 ```
 
 ## 🔌 Plugin Features

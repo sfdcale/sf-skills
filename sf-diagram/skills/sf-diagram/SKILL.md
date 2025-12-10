@@ -132,54 +132,54 @@ Score: XX/80 ⭐⭐⭐⭐ Rating
 
 ## Mermaid Styling Guide (sf-skills Standard)
 
-Use individual `style` declarations with Tailwind-inspired colors for consistent diagrams across the sf-skills ecosystem.
+Use individual `style` declarations with **pastel fills and dark strokes** for consistent, visually soft diagrams.
 
-### Primary Color Palette
+### Primary Color Palette (Pastel + Dark Borders)
 
-| Component | Fill Hex | Stroke Hex | Usage |
-|-----------|----------|------------|-------|
-| AI & Agents | `#ec4899` | `#db2777` | Agentforce, AI features |
-| Integration (Orange) | `#f97316` | `#ea580c` | Connected Apps, OAuth |
-| Integration (Teal) | `#14b8a6` | `#0d9488` | Named Creds, callouts |
-| Development (Purple) | `#8b5cf6` | `#7c3aed` | Apex, services |
-| Development (Indigo) | `#6366f1` | `#4f46e5` | Flows, automation |
-| Foundation (Cyan) | `#06b6d4` | `#0891b2` | Metadata, objects |
-| Foundation (Amber) | `#f59e0b` | `#d97706` | Data, storage |
-| DevOps (Green) | `#10b981` | `#059669` | Deploy, CI/CD |
-| Utility (Slate) | `#64748b` | `#475569` | Tooling |
+| Component | Pastel Fill | Dark Stroke | Text Color | Usage |
+|-----------|-------------|-------------|------------|-------|
+| AI & Agents | `#fce7f3` | `#be185d` | `#1f2937` | Agentforce, AI features |
+| Integration (Orange) | `#ffedd5` | `#c2410c` | `#1f2937` | Connected Apps, OAuth |
+| Integration (Teal) | `#ccfbf1` | `#0f766e` | `#1f2937` | Named Creds, callouts |
+| Development (Purple) | `#ede9fe` | `#6d28d9` | `#1f2937` | Apex, services |
+| Development (Indigo) | `#e0e7ff` | `#4338ca` | `#1f2937` | Flows, automation |
+| Foundation (Cyan) | `#cffafe` | `#0e7490` | `#1f2937` | Metadata, objects |
+| Foundation (Amber) | `#fef3c7` | `#b45309` | `#1f2937` | Data, storage |
+| DevOps (Green) | `#d1fae5` | `#047857` | `#1f2937` | Deploy, CI/CD |
+| Utility (Slate) | `#f1f5f9` | `#334155` | `#1f2937` | Tooling |
 
 ### Preferred: Individual Node Styling
 
-**DO use `style` declarations (preferred)**:
+**DO use `style` declarations with pastel fills**:
 ```mermaid
 flowchart TB
-    A["🤖 Agent<br/><small>Topics, Actions</small>"]
-    B["⚡ Apex<br/><small>Services, Tests</small>"]
+    A["🤖 Agent"]
+    B["⚡ Apex"]
 
     A --> B
 
-    style A fill:#ec4899,stroke:#db2777,color:#fff
-    style B fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style A fill:#fce7f3,stroke:#be185d,color:#1f2937
+    style B fill:#ede9fe,stroke:#6d28d9,color:#1f2937
 ```
 
 **AVOID `%%{init}` blocks** - they're harder to maintain and less flexible.
 
 ### Subgraph Styling
 
-Use transparent backgrounds with dashed borders:
+Use transparent backgrounds with dark dashed borders:
 ```mermaid
 subgraph ai["🤖 AI & Agents"]
     A[Agent]
 end
 
-style ai fill:transparent,stroke:#ec4899,stroke-dasharray:5
+style ai fill:transparent,stroke:#be185d,stroke-dasharray:5
 ```
 
 ### Node Label Pattern
 
-Include icons and subtitles for rich labels:
+Keep labels short (icon + name only). Avoid `<br/>` and `<small>` tags:
 ```
-["🔐 sf-connected-apps<br/><small>OAuth, ECAs, Security</small>"]
+["🔐 sf-connected-apps"]
 ```
 
 **Full reference**: See `docs/color-palette.md`
