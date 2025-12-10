@@ -78,7 +78,7 @@ First, add the marketplace to Claude Code:
 ## 🔗 Skill Architecture
 
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70, "curve": "linear"}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
 flowchart TB
     subgraph ai["🤖 AI & AGENTS"]
         agentforce["🤖 sf-ai-agentforce"]

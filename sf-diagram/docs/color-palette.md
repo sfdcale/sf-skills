@@ -108,7 +108,7 @@ flowchart LR
 Control diagram density with `%%{init}` configuration:
 
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70, "curve": "linear"}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
 ```
 
 ### Available Spacing Options
@@ -133,13 +133,13 @@ Control diagram density with `%%{init}` configuration:
 For clean, readable diagrams:
 
 ```
-%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70, "curve": "linear"}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
 ```
 
 **Why these values?**
 - **nodeSpacing: 80** — 60% more horizontal space than default
 - **rankSpacing: 70** — 40% more vertical space than default
-- **curve: linear** — Cleaner, more technical appearance
+- **curve: basis** — Default smooth curves (omit to use default)
 
 **⚠️ Limitation**: Subgraphs may not fully inherit spacing settings due to a [known Mermaid issue](https://github.com/mermaid-js/mermaid/issues/5178).
 
@@ -171,7 +171,7 @@ flowchart TB
 Use 50-level backgrounds with dark dashed borders:
 
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70, "curve": "linear"}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
 flowchart TB
     subgraph ai["🤖 AI & AGENTS"]
         A[Agent]
@@ -212,7 +212,7 @@ Keep labels short for consistent rendering.
 Copy this template for consistent diagrams with the finalized color scheme:
 
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70, "curve": "linear"}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
 flowchart TB
     subgraph ai["🤖 AI & AGENTS"]
         agentforce["🤖 sf-ai-agentforce"]

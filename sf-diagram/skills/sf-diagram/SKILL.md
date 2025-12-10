@@ -139,14 +139,15 @@ Use individual `style` declarations with **Tailwind 200-level pastel fills** and
 Add this init directive at the start of every flowchart for optimal readability:
 
 ```
-%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70, "curve": "linear"}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
 ```
 
 | Option | Value | Effect |
 |--------|-------|--------|
 | `nodeSpacing` | 80 | 60% more horizontal space (default: 50) |
 | `rankSpacing` | 70 | 40% more vertical space (default: 50) |
-| `curve` | "linear" | Straight lines for clean, technical look |
+
+**Note**: Omit `curve` to use the default smooth curves (`basis`).
 
 ### Primary Color Palette (Tailwind 200 + Dark Borders)
 
@@ -192,7 +193,7 @@ flowchart TB
 
 Use 50-level backgrounds with dark dashed borders. Use UPPERCASE for subgraph titles:
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70, "curve": "linear"}} }%%
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
 flowchart TB
     subgraph ai["🤖 AI & AGENTS"]
         A[Agent]
