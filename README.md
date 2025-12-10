@@ -138,27 +138,27 @@ flowchart TB
     connectedapps -->|"deploys"| deploy
     agentforce -->|"publishes"| deploy
 
-    %% Styling - AI (pink pastel)
-    style agentforce fill:#fce7f3,stroke:#be185d,color:#1f2937
+    %% Styling - AI (pink-200)
+    style agentforce fill:#fbcfe8,stroke:#be185d,color:#1f2937
 
-    %% Styling - Integration (orange/teal/sky pastel)
-    style connectedapps fill:#ffedd5,stroke:#c2410c,color:#1f2937
-    style sfintegration fill:#ccfbf1,stroke:#0f766e,color:#1f2937
-    style diagram fill:#e0f2fe,stroke:#0369a1,color:#1f2937
+    %% Styling - Integration (orange-200/teal-200/sky-200)
+    style connectedapps fill:#fed7aa,stroke:#c2410c,color:#1f2937
+    style sfintegration fill:#99f6e4,stroke:#0f766e,color:#1f2937
+    style diagram fill:#bae6fd,stroke:#0369a1,color:#1f2937
 
-    %% Styling - Development (purple/indigo pastel)
-    style apex fill:#ede9fe,stroke:#6d28d9,color:#1f2937
-    style flow fill:#e0e7ff,stroke:#4338ca,color:#1f2937
+    %% Styling - Development (violet-200/indigo-200)
+    style apex fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+    style flow fill:#c7d2fe,stroke:#4338ca,color:#1f2937
 
-    %% Styling - Foundation (cyan/amber pastel)
-    style metadata fill:#cffafe,stroke:#0e7490,color:#1f2937
-    style data fill:#fef3c7,stroke:#b45309,color:#1f2937
+    %% Styling - Foundation (cyan-200/amber-200)
+    style metadata fill:#a5f3fc,stroke:#0e7490,color:#1f2937
+    style data fill:#fde68a,stroke:#b45309,color:#1f2937
 
-    %% Styling - DevOps (green pastel)
-    style deploy fill:#d1fae5,stroke:#047857,color:#1f2937
+    %% Styling - DevOps (emerald-200)
+    style deploy fill:#a7f3d0,stroke:#047857,color:#1f2937
 
-    %% Styling - Tooling (slate pastel)
-    style skillbuilder fill:#f1f5f9,stroke:#334155,color:#1f2937
+    %% Styling - Tooling (slate-200)
+    style skillbuilder fill:#e2e8f0,stroke:#334155,color:#1f2937
 
     %% Subgraph styling - transparent with dark borders
     style ai fill:transparent,stroke:#be185d,stroke-dasharray:5
