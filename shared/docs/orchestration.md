@@ -4,12 +4,24 @@
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  CORRECT MULTI-SKILL ORCHESTRATION ORDER                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  1. sf-metadata  → Create object/field definitions (LOCAL files)            │
-│  2. sf-flow      → Create flow definitions (LOCAL files)                    │
-│  3. sf-deploy    → Deploy all metadata to org (REMOTE)                      │
-│  4. sf-data      → Create test data (REMOTE - objects must exist!)          │
+│  1. sf-metadata         → Create object/field definitions (LOCAL files)     │
+│  2. sf-flow             → Create flow definitions (LOCAL files)             │
+│  3. sf-devops-architect → MANDATORY gateway for all deployments (REMOTE)    │
+│         ↓                                                                   │
+│     [sf-deploy]         → Delegated deployment execution                    │
+│  4. sf-data             → Create test data (REMOTE - objects must exist!)   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## ⚠️ MANDATORY: sf-devops-architect Gateway
+
+**ALL deployments MUST go through the sf-devops-architect sub-agent.**
+
+```
+Task(subagent_type="sf-devops-architect", prompt="Deploy to [org]")
+```
+
+❌ NEVER use sf-deploy skill directly - always route through sf-devops-architect.
 
 ## Why Order Matters
 
@@ -37,27 +49,31 @@ When building agents with external API integrations, follow this extended order:
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  INTEGRATION + AGENTFORCE ORCHESTRATION ORDER                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  1. sf-connected-apps  → Create Connected App (if OAuth needed)             │
-│  2. sf-integration     → Create Named Credential + External Service         │
-│  3. sf-apex            → Create @InvocableMethod (if custom logic needed)   │
-│  4. sf-flow            → Create Flow wrapper (HTTP Callout or Apex wrapper) │
-│  5. sf-deploy          → Deploy all metadata to org                         │
-│  6. sf-ai-agentforce   → Create agent with flow:// target                   │
-│  7. sf-deploy          → Publish agent (sf agent publish)                   │
+│  1. sf-connected-apps   → Create Connected App (if OAuth needed)            │
+│  2. sf-integration      → Create Named Credential + External Service        │
+│  3. sf-apex             → Create @InvocableMethod (if custom logic needed)  │
+│  4. sf-flow             → Create Flow wrapper (HTTP Callout or Apex wrapper)│
+│  5. sf-devops-architect → Deploy all metadata (MANDATORY gateway)           │
+│         ↓                                                                   │
+│     [sf-deploy]         → Delegated deployment execution                    │
+│  6. sf-ai-agentforce    → Create agent with flow:// target                  │
+│  7. sf-devops-architect → Publish agent (MANDATORY gateway)                 │
+│         ↓                                                                   │
+│     [sf-deploy]         → sf agent publish                                  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Integration Order Details
 
-| Step | Skill | Purpose |
-|------|-------|---------|
+| Step | Skill/Agent | Purpose |
+|------|-------------|---------|
 | 1 | sf-connected-apps | OAuth Connected App for API authentication |
 | 2 | sf-integration | Named Credential (references Connected App), External Service |
 | 3 | sf-apex | Business logic with @InvocableMethod |
 | 4 | sf-flow | HTTP Callout Flow or Apex wrapper Flow |
-| 5 | sf-deploy | Deploy all metadata |
+| 5 | **sf-devops-architect** | MANDATORY gateway → delegates to sf-deploy |
 | 6 | sf-ai-agentforce | Agent Script with flow:// action targets |
-| 7 | sf-deploy | sf agent publish to activate |
+| 7 | **sf-devops-architect** | MANDATORY gateway → delegates to sf-deploy for agent publish |
 
 ### Why Integration Order Matters
 

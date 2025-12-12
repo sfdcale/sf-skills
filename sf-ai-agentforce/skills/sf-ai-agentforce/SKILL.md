@@ -43,20 +43,22 @@ There are **two deployment methods** with **different capabilities**:
 
 ## ⚠️ CRITICAL: Orchestration Order
 
-**sf-metadata → sf-apex → sf-flow → sf-deploy → sf-ai-agentforce** (you are here: sf-ai-agentforce)
+**sf-metadata → sf-apex → sf-flow → sf-devops-architect → sf-ai-agentforce** (you are here: sf-ai-agentforce)
 
 **Why this order?**
 1. **sf-metadata**: Custom objects/fields must exist before Apex or Flows reference them
 2. **sf-apex**: InvocableMethod classes must be deployed before Flow wrappers call them
 3. **sf-flow**: Flows must be created AND deployed before agents can reference them
-4. **sf-deploy**: All dependencies must be deployed to org before agent publishing
+4. **sf-devops-architect**: MANDATORY gateway for ALL deployments (delegates to sf-deploy)
 5. **sf-ai-agentforce**: Agent is published LAST after all dependencies are in place
 
-**⚠️ MANDATORY Skill Delegation:**
+**⚠️ MANDATORY Delegation:**
 - **Flows**: ALWAYS use `Skill(skill="sf-flow")` - never manually write Flow XML
-- **Deployments**: ALWAYS use `Skill(skill="sf-deploy")` - never use direct CLI commands
+- **Deployments**: ALWAYS use `Task(subagent_type="sf-devops-architect")` - never use direct CLI or sf-deploy skill
 - **Apex**: ALWAYS use `Skill(skill="sf-apex")` for InvocableMethod classes
-- **Agent Publishing**: Use `sf agent publish authoring-bundle` directly (not sf-deploy)
+- **Agent Publishing**: Route through `sf-devops-architect` which delegates to sf-deploy
+
+❌ NEVER use `Skill(skill="sf-deploy")` directly - always route through sf-devops-architect.
 
 See [../../shared/docs/orchestration.md](../../shared/docs/orchestration.md) for cross-skill orchestration details.
 
@@ -1182,17 +1184,17 @@ instructions: ->
 3. sf-flow handles recordLookups best practices (e.g., no parent field traversal via queriedFields)
 4. sf-flow catches common errors like missing fault paths, DML in loops, etc.
 
-### ⚠️ MANDATORY: Use sf-deploy for Deployments
+### ⚠️ MANDATORY: Use sf-devops-architect for Deployments
 
-**CRITICAL**: For ALL deployments (Flows, Apex, Metadata), you MUST use the `sf-deploy` skill. **NEVER use direct CLI commands** unless sf-deploy explicitly delegates to them.
+**CRITICAL**: For ALL deployments (Flows, Apex, Metadata, Agent Publishing), you MUST use the `sf-devops-architect` sub-agent. **NEVER use direct CLI commands** or sf-deploy skill directly.
 
 **Why?**
-1. sf-deploy handles proper deployment ordering (Objects → Permission Sets → Flows → Apex)
-2. sf-deploy always validates with --dry-run before actual deployment
-3. sf-deploy provides consistent error handling and troubleshooting
-4. sf-deploy ensures FLS warnings and permission set assignments
+1. sf-devops-architect provides centralized deployment orchestration
+2. Delegates to sf-deploy with proper ordering (Objects → Permission Sets → Flows → Apex)
+3. Always validates with --dry-run before actual deployment
+4. Consistent error handling and troubleshooting
 
-**Exception**: Agent publishing uses `sf agent publish authoring-bundle` which is NOT handled by sf-deploy. This command is specific to Agent Script.
+❌ NEVER use `Skill(skill="sf-deploy")` directly - always route through sf-devops-architect.
 
 ### Flow Integration (Fully Supported)
 
@@ -1202,16 +1204,15 @@ instructions: ->
 Skill(skill="sf-flow")
 Request: "Create an Autolaunched Flow Get_Account_Info with input account_id and outputs account_name, industry"
 
-# 2. Deploy Flow to org using sf-deploy skill (MANDATORY)
-Skill(skill="sf-deploy")
-Request: "Deploy the Flow Get_Account_Info to [alias] with --dry-run first"
+# 2. Deploy Flow using sf-devops-architect (MANDATORY)
+Task(subagent_type="sf-devops-architect", prompt="Deploy the Flow Get_Account_Info to [alias] with --dry-run first")
 
 # 3. Create Agent with flow:// target
 Skill(skill="sf-agentforce")
 Request: "Create an agent that uses flow://Get_Account_Info"
 
-# 4. Publish Agent (Agent Script specific command)
-sf agent publish authoring-bundle --api-name [AgentName] --target-org [alias]
+# 4. Publish Agent using sf-devops-architect (MANDATORY)
+Task(subagent_type="sf-devops-architect", prompt="Publish agent [AgentName] to [alias]")
 ```
 
 ### Apex Integration (Use Flow Wrapper)
@@ -1224,30 +1225,28 @@ sf agent publish authoring-bundle --api-name [AgentName] --target-org [alias]
 Skill(skill="sf-apex")
 Request: "Create CaseCreationService with @InvocableMethod createCase"
 
-# 2. Deploy Apex to org using sf-deploy skill (MANDATORY)
-Skill(skill="sf-deploy")
-Request: "Deploy ApexClass:CaseCreationService to [alias] with tests"
+# 2. Deploy Apex using sf-devops-architect (MANDATORY)
+Task(subagent_type="sf-devops-architect", prompt="Deploy ApexClass:CaseCreationService to [alias] with tests")
 
 # 3. Create Autolaunched Flow wrapper that calls the Apex using sf-flow skill (MANDATORY)
 Skill(skill="sf-flow")
 Request: "Create Autolaunched Flow Create_Support_Case that wraps CaseCreationService Apex"
 
-# 4. Deploy Flow to org using sf-deploy skill (MANDATORY)
-Skill(skill="sf-deploy")
-Request: "Deploy Flow:Create_Support_Case to [alias]"
+# 4. Deploy Flow using sf-devops-architect (MANDATORY)
+Task(subagent_type="sf-devops-architect", prompt="Deploy Flow:Create_Support_Case to [alias]")
 
 # 5. Reference Flow in Agent Script
 target: "flow://Create_Support_Case"  # Flow wrapper that calls Apex
 
-# 6. Publish Agent (Agent Script specific command)
-sf agent publish authoring-bundle --api-name [AgentName] --target-org [alias]
+# 6. Publish Agent using sf-devops-architect (MANDATORY)
+Task(subagent_type="sf-devops-architect", prompt="Publish agent [AgentName] to [alias]")
 ```
 
 | Direction | Pattern | Supported |
 |-----------|---------|-----------|
 | sf-agentforce → sf-flow | Create Flow-based actions | ✅ Full |
 | sf-agentforce → sf-apex | Create Apex via Flow wrapper | ✅ Via Flow |
-| sf-agentforce → sf-deploy | Deploy agent metadata | ✅ Full |
+| sf-agentforce → **sf-devops-architect** | Deploy agent metadata | ✅ MANDATORY |
 | sf-agentforce → sf-metadata | Query object structure | ✅ Full |
 | sf-agentforce → sf-integration | External API actions | ✅ Via Flow |
 
@@ -1506,12 +1505,12 @@ sf agent publish authoring-bundle --api-name Order_Status_Agent --target-org [al
 
 ### Cross-Skill Integration for Actions
 
-| From Skill | To Skill | When | Example |
-|------------|----------|------|---------|
+| From Skill | To Agent/Skill | When | Example |
+|------------|----------------|------|---------|
 | sf-ai-agentforce | sf-integration | External API actions | "Create Named Credential for agent API action" |
 | sf-ai-agentforce | sf-flow | Flow wrappers for Apex/API | "Create HTTP Callout Flow for agent" |
 | sf-ai-agentforce | sf-apex | Business logic @InvocableMethod | "Create Apex for case creation" |
-| sf-ai-agentforce | sf-deploy | Deploy all components | "Deploy integration metadata" |
+| sf-ai-agentforce | **sf-devops-architect** | Deploy all components | `Task(subagent_type="sf-devops-architect")` - **MANDATORY** |
 
 ---
 

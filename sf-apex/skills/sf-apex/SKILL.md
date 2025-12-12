@@ -72,19 +72,21 @@ Score: XX/150 ⭐⭐⭐⭐ Rating
 └─ Documentation: XX/10
 ```
 
-### Phase 4: Deployment
+### Phase 4: Deployment (MANDATORY: Use sf-devops-architect)
+
+⚠️ **ALL deployments MUST go through sf-devops-architect sub-agent.**
 
 **Step 1: Validation**
 ```
-Skill(skill="sf-deploy")
-Request: "Deploy classes at force-app/main/default/classes/ to [target-org] with --dry-run --test-level RunLocalTests"
+Task(subagent_type="sf-devops-architect", prompt="Deploy classes at force-app/main/default/classes/ to [target-org] with --dry-run")
 ```
 
 **Step 2: Deploy** (only if validation succeeds)
 ```
-Skill(skill="sf-deploy")
-Request: "Proceed with actual deployment to [target-org]"
+Task(subagent_type="sf-devops-architect", prompt="Proceed with actual deployment to [target-org]")
 ```
+
+❌ NEVER use `Skill(skill="sf-deploy")` directly - always route through sf-devops-architect.
 
 ### Phase 5: Documentation & Testing Guidance
 
@@ -370,11 +372,13 @@ See [../../docs/trigger-actions-framework.md](../../docs/trigger-actions-framewo
 
 ## Cross-Skill Integration
 
-| Skill | When to Use | Example |
-|-------|-------------|---------|
+| Skill/Agent | When to Use | Example |
+|-------------|-------------|---------|
 | sf-metadata | Discover object/fields before coding | `Skill(skill="sf-metadata")` → "Describe Invoice__c" |
 | sf-data | Generate 251+ test records after deploy | `Skill(skill="sf-data")` → "Create 251 Accounts for bulk testing" |
-| sf-deploy | Deploy and run tests | `Skill(skill="sf-deploy")` → "Deploy with RunLocalTests" |
+| **sf-devops-architect** | ⚠️ MANDATORY for ALL deployments | `Task(subagent_type="sf-devops-architect", prompt="Deploy with RunLocalTests")` |
+
+❌ NEVER use `Skill(skill="sf-deploy")` directly - always route through sf-devops-architect sub-agent.
 
 ## Dependencies
 
