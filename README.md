@@ -61,16 +61,16 @@ sf-apex/
 
 | | Skill | Description | Status |
 |--|-------|-------------|--------|
-| ⚡ | **[sf-apex](sf-apex/)** | Apex code generation & review with TAF pattern enforcement | ✅ Live |
-| 🔄 | **[sf-flow](sf-flow/)** | Flow creation & validation with bulkification checks | ✅ Live |
-| 📋 | **[sf-metadata](sf-metadata/)** | Metadata generation & org querying | ✅ Live |
-| 💾 | **[sf-data](sf-data/)** | Data operations, SOQL expertise & test data factories | ✅ Live |
-| 🚀 | **[sf-deploy](sf-deploy/)** | DevOps & CI/CD automation using sf CLI v2 | ✅ Live |
-| 🤖 | **[sf-ai-agentforce](sf-ai-agentforce/)** | Agentforce agent creation with Agent Script syntax & Agent Actions | ✅ Live |
-| 🔐 | **[sf-connected-apps](sf-connected-apps/)** | Connected Apps & External Client Apps with OAuth config | ✅ Live |
-| 🔗 | **[sf-integration](sf-integration/)** | Named Credentials, External Services, REST/SOAP, Platform Events, CDC | ✅ Live |
-| 📊 | **[sf-diagram](sf-diagram/)** | Mermaid diagrams for OAuth, ERD, integrations & architecture | ✅ Live |
-| 🛠️ | **[skill-builder](skill-builder/)** | Claude Code skill creation wizard | ✅ Live |
+| ⚡ | **[sf-apex](sf-apex/)** | Apex gen & TAF patterns | 🧪 Alpha |
+| 🔄 | **[sf-flow](sf-flow/)** | Flow creation & bulk validation | 🧪 Alpha |
+| 📋 | **[sf-metadata](sf-metadata/)** | Metadata gen & org queries | 🧪 Alpha |
+| 💾 | **[sf-data](sf-data/)** | SOQL & test data factories | 🧪 Alpha |
+| 🚀 | **[sf-deploy](sf-deploy/)** | CI/CD automation (sf CLI v2) | 🧪 Alpha |
+| 🤖 | **[sf-ai-agentforce](sf-ai-agentforce/)** | Agent Script & Actions | 🧪 Alpha |
+| 🔐 | **[sf-connected-apps](sf-connected-apps/)** | OAuth apps & ECAs | 🧪 Alpha |
+| 🔗 | **[sf-integration](sf-integration/)** | Callouts, Events, CDC | 🧪 Alpha |
+| 📊 | **[sf-diagram](sf-diagram/)** | Mermaid diagrams & ERD | ✅ Stable |
+| 🛠️ | **[skill-builder](skill-builder/)** | Skill creation wizard | ✅ Stable |
 
 ## 🏗️ Available Sub-Agents
 
