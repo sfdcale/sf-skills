@@ -61,6 +61,14 @@ sf-apex/
 | 📊 | **[sf-diagram](sf-diagram/)** | Mermaid diagrams for OAuth, ERD, integrations & architecture | ✅ Live |
 | 🛠️ | **[skill-builder](skill-builder/)** | Claude Code skill creation wizard | ✅ Live |
 
+## 🏗️ Available Sub-Agents
+
+| | Sub-Agent | Description | Status |
+|--|-----------|-------------|--------|
+| 🚦 | **[sf-devops-architect](agents/)** | MANDATORY deployment gateway - orchestrates all Salesforce deployments | ✅ Live |
+
+> **Skills vs Sub-Agents**: Skills are invoked with `Skill(skill="name")`. Sub-agents are invoked with `Task(subagent_type="name", ...)` and can run autonomously in the background.
+
 ## 🚀 Installation
 
 First, add the marketplace to Claude Code:
@@ -75,7 +83,7 @@ First, add the marketplace to Claude Code:
   <img src="https://img.youtube.com/vi/a38MM8PBTe4/maxresdefault.jpg" alt="How to Add/Install Skills to ClaudeCode" />
 </a>
 
-## 🔗 Skill Architecture
+## 🔗 Skill & Sub-Agent Architecture
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 70}} }%%
@@ -98,6 +106,10 @@ flowchart TB
     subgraph foundation["📦 FOUNDATION"]
         metadata["📋 sf-metadata"]
         data["💾 sf-data"]
+    end
+
+    subgraph gateway["🚦 DEPLOYMENT GATEWAY (Sub-Agent)"]
+        devopsarchitect["🏗️ sf-devops-architect"]
     end
 
     subgraph devops["🚀 DEVOPS"]
@@ -131,13 +143,16 @@ flowchart TB
     %% Foundation relationships
     data -->|"structure"| metadata
 
-    %% Deployment relationships
-    apex -->|"deploys"| deploy
-    flow -->|"deploys"| deploy
-    metadata -->|"deploys"| deploy
-    sfintegration -->|"deploys"| deploy
-    connectedapps -->|"deploys"| deploy
-    agentforce -->|"publishes"| deploy
+    %% MANDATORY Deployment Gateway - ALL deployments go through sf-devops-architect
+    apex ==>|"MANDATORY"| devopsarchitect
+    flow ==>|"MANDATORY"| devopsarchitect
+    metadata ==>|"MANDATORY"| devopsarchitect
+    sfintegration ==>|"MANDATORY"| devopsarchitect
+    connectedapps ==>|"MANDATORY"| devopsarchitect
+    agentforce ==>|"MANDATORY"| devopsarchitect
+
+    %% Gateway delegates to sf-deploy skill
+    devopsarchitect -->|"delegates"| deploy
 
     %% Styling - AI (pink-200)
     style agentforce fill:#fbcfe8,stroke:#be185d,color:#1f2937
@@ -155,20 +170,39 @@ flowchart TB
     style metadata fill:#a5f3fc,stroke:#0e7490,color:#1f2937
     style data fill:#fde68a,stroke:#b45309,color:#1f2937
 
+    %% Styling - Gateway Sub-Agent (rose-300 with thick border)
+    style devopsarchitect fill:#fda4af,stroke:#be123c,stroke-width:3px,color:#1f2937
+
     %% Styling - DevOps (emerald-200)
     style deploy fill:#a7f3d0,stroke:#047857,color:#1f2937
 
     %% Styling - Tooling (slate-200)
     style skillbuilder fill:#e2e8f0,stroke:#334155,color:#1f2937
 
-    %% Subgraph styling - light fill with dark dashed borders
+    %% Subgraph styling
     style ai fill:#fdf2f8,stroke:#be185d,stroke-dasharray:5
     style integration fill:#fff7ed,stroke:#c2410c,stroke-dasharray:5
     style development fill:#f5f3ff,stroke:#6d28d9,stroke-dasharray:5
     style foundation fill:#ecfeff,stroke:#0e7490,stroke-dasharray:5
+    style gateway fill:#ffe4e6,stroke:#be123c,stroke-width:2px
     style devops fill:#ecfdf5,stroke:#047857,stroke-dasharray:5
     style tooling fill:#f8fafc,stroke:#334155,stroke-dasharray:5
 ```
+
+### 🚦 Deployment Gateway
+
+**ALL deployments MUST go through the `sf-devops-architect` sub-agent:**
+
+```
+Task(subagent_type="sf-devops-architect", prompt="Deploy to [org]")
+```
+
+| ❌ Wrong | ✅ Correct |
+|----------|------------|
+| `sf project deploy start ...` | `Task(subagent_type="sf-devops-architect", ...)` |
+| `Skill(skill="sf-deploy")` | `Task(subagent_type="sf-devops-architect", ...)` |
+
+The gateway ensures consistent validation, orchestration, and deployment workflows.
 
 ## 🔌 Plugin Features
 
@@ -326,7 +360,7 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | 🏦 | `sf-industry-finserv` | KYC, AML, Wealth Management | 📋 Planned |
 | 💵 | `sf-industry-revenue` | CPQ, Billing, Revenue Lifecycle | 📋 Planned |
 
-**Total: 24 skills** (10 live ✅, 14 planned 📋)
+**Total: 24 skills + 1 sub-agent** (10 skills ✅ + 1 sub-agent ✅ live, 14 planned 📋)
 
 ## Contributing
 
