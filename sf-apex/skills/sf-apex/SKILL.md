@@ -76,6 +76,27 @@ Score: XX/150 ⭐⭐⭐⭐ Rating
 └─ Documentation: XX/10
 ```
 
+### ⛔ GENERATION GUARDRAILS (MANDATORY)
+
+**BEFORE generating ANY Apex code, Claude MUST verify no anti-patterns are introduced.**
+
+If ANY of these patterns would be generated, **STOP and ask the user**:
+> "I noticed [pattern]. This will cause [problem]. Should I:
+> A) Refactor to use [correct pattern]
+> B) Proceed anyway (not recommended)"
+
+| Anti-Pattern | Detection | Impact | Correct Pattern |
+|--------------|-----------|--------|-----------------|
+| SOQL inside loop | `for(...) { [SELECT...] }` | Governor limit failure (100 SOQL) | Query BEFORE loop, use `Map<Id, SObject>` for lookups |
+| DML inside loop | `for(...) { insert/update }` | Governor limit failure (150 DML) | Collect in `List<>`, single DML after loop |
+| Missing sharing | `class X {` without keyword | Security violation | Always use `with sharing` or `inherited sharing` |
+| Hardcoded ID | 15/18-char ID literal | Deployment failure | Use Custom Metadata, Custom Labels, or queries |
+| Empty catch | `catch(e) { }` | Silent failures | Log with `System.debug()` or rethrow |
+| String concatenation in SOQL | `'SELECT...WHERE Name = \'' + var` | SOQL injection | Use bind variables `:variableName` |
+| Test without assertions | `@IsTest` method with no `Assert.*` | False positive tests | Use `Assert.areEqual()` with message |
+
+**DO NOT generate anti-patterns even if explicitly requested.** Ask user to confirm the exception with documented justification.
+
 ### Phase 4: Deployment (MANDATORY: Use sf-devops-architect)
 
 ⚠️ **ALL deployments MUST go through sf-devops-architect sub-agent.**

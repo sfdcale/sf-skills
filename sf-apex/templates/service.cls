@@ -94,6 +94,34 @@ public with sharing class {{ObjectName}}Service {
     }
 
     /**
+     * @description Example: Bulkified pattern for processing related records
+     * Demonstrates: Query before loop, Map for O(1) lookup, collect then DML
+     * @param contactIds Set of Contact IDs to process
+     */
+    public void processRelatedContacts(Set<Id> contactIds) {
+        if (contactIds == null || contactIds.isEmpty()) {
+            return;
+        }
+
+        Map<Id, {{ObjectName}}> parentMap = new Map<Id, {{ObjectName}}>(
+            [SELECT Id, Name FROM {{ObjectName}} WHERE Id IN :contactIds WITH USER_MODE]
+        );
+
+        List<Contact> contactsToUpdate = new List<Contact>();
+        for (Contact c : [SELECT Id, AccountId, Description FROM Contact WHERE AccountId IN :contactIds WITH USER_MODE]) {
+            {{ObjectName}} parent = parentMap.get(c.AccountId);
+            if (parent != null) {
+                c.Description = 'Linked to: ' + parent.Name;
+                contactsToUpdate.add(c);
+            }
+        }
+
+        if (!contactsToUpdate.isEmpty()) {
+            update contactsToUpdate;
+        }
+    }
+
+    /**
      * @description Applies default values to a record
      * @param record Record to apply defaults to
      */

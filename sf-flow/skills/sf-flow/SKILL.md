@@ -165,6 +165,30 @@ Score: 92/110 ⭐⭐⭐⭐ Very Good
 
 **Strict Mode**: If ANY errors/warnings → Block with options: (1) Apply auto-fixes, (2) Show manual fixes, (3) Generate corrected version. **DO NOT PROCEED** until 100% clean.
 
+### ⛔ GENERATION GUARDRAILS (MANDATORY)
+
+**BEFORE generating ANY Flow XML, Claude MUST verify no anti-patterns are introduced.**
+
+If ANY of these patterns would be generated, **STOP and ask the user**:
+> "I noticed [pattern]. This will cause [problem]. Should I:
+> A) Refactor to use [correct pattern]
+> B) Proceed anyway (not recommended)"
+
+| Anti-Pattern | Impact | Correct Pattern |
+|--------------|--------|-----------------|
+| After-Save updating same object without entry conditions | **Infinite loop** (critical) | MUST add entry conditions: "Only when [field] is changed" |
+| Get Records inside Loop | Governor limit failure (100 SOQL) | Query BEFORE loop, use collection variable |
+| Create/Update/Delete Records inside Loop | Governor limit failure (150 DML) | Collect in loop → single DML after loop |
+| Apex Action inside Loop | Callout limits | Pass collection to single Apex invocation |
+| DML without Fault Path | Silent failures | Add Fault connector → error handling element |
+| Get Records without null check | NullPointerException | Add Decision: "Records Found?" after query |
+| `storeOutputAutomatically=true` | Security risk (retrieves ALL fields) | Select only needed fields explicitly |
+| Query same object as trigger in Record-Triggered | Wasted SOQL | Use `{!$Record.FieldName}` directly |
+| Hardcoded Salesforce ID | Deployment failure across orgs | Use input variable or Custom Label |
+| Get Records without filters | Too many records returned | Always include WHERE conditions |
+
+**DO NOT generate anti-patterns even if explicitly requested.** Ask user to confirm the exception with documented justification.
+
 ### Phase 4: Deployment & Integration (MANDATORY: Use sf-devops-architect)
 
 ⚠️ **MANDATORY: Use sf-devops-architect sub-agent** - NEVER use direct CLI commands or sf-deploy skill directly.
