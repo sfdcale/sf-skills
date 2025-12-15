@@ -319,15 +319,26 @@ topic orders:
 
 ## Variable Types
 
-| Type | Description | Default | Example |
-|------|-------------|---------|---------|
-| `string` | Text values | `""` | `"John Doe"` |
-| `number` | Integers or decimals | `0` | `42`, `99.99` |
-| `boolean` | True/False | `False` | `True`, `False` |
-| `list[type]` | Array of values | `[]` | `list[string]` |
-| `object` | Complex object with Lightning type | `{}` | See advanced syntax below |
+### Complete Type Reference
 
-**Note**: Boolean values must be capitalized: `True`, `False`
+| Type | Description | Example |
+|------|-------------|---------|
+| `string` | Text values | `name: mutable string = "John"` |
+| `number` | Floating-point (decimals) | `price: mutable number = 99.99` |
+| `integer` | Integer values only | `count: mutable integer = 5` |
+| `long` | Long integers | `big_num: mutable long = 9999999999` |
+| `boolean` | True/False (capitalized!) | `active: mutable boolean = True` |
+| `date` | YYYY-MM-DD format | `start: mutable date = 2025-01-15` |
+| `datetime` | Full timestamp | `created: mutable datetime` |
+| `time` | Time only | `appointment: mutable time` |
+| `currency` | Money values | `total: mutable currency` |
+| `id` | Salesforce Record ID | `record_id: mutable id` |
+| `object` | Complex object with Lightning type | See advanced syntax below |
+| `list[type]` | Array of values | `list[string]`, `list[number]` |
+
+**Notes**:
+- Boolean values must be capitalized: `True`, `False`
+- Linked variables support only: `string`, `number`, `boolean`, `date`, `id`
 
 ### Advanced `object` Type with Lightning Data Types (Tested Dec 2025)
 
@@ -722,12 +733,33 @@ checkout: @actions.process_payment
 
 Use `before_reasoning` and `after_reasoning` blocks for automatic initialization and cleanup.
 
+### ⚠️ CRITICAL SYNTAX RULES for Lifecycle Blocks
+
+| Rule | Details |
+|------|---------|
+| **Transition Syntax** | Use `transition to` NOT `@utils.transition to` |
+| **No Pipe (`\|`)** | The pipe command is NOT supported - use only logic/actions |
+| **after_reasoning May Skip** | If a transition occurs mid-topic, `after_reasoning` won't execute |
+
+```agentscript
+# ❌ WRONG - @utils.transition doesn't work in lifecycle blocks
+before_reasoning:
+   if @variables.expired == True:
+      @utils.transition to @topic.expired   # FAILS!
+
+# ✅ CORRECT - Use "transition to" (no @utils)
+before_reasoning:
+   if @variables.expired == True:
+      transition to @topic.expired         # WORKS!
+```
+
 ### before_reasoning
 
 Runs **BEFORE** each reasoning step. Use for:
 - Incrementing turn counters
 - Refreshing context data
 - Initializing session state
+- Conditional routing based on state
 
 ```agentscript
 topic conversation:

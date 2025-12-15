@@ -235,28 +235,121 @@ See [examples/deployment-workflows.md](examples/deployment-workflows.md) for scr
 | `SObject type 'Object__c' not supported` | Custom Object | Deploy object via sf-metadata first |
 | `Queue 'QueueName' not found` | Queue Metadata | Deploy queue via sf-metadata first |
 
-### sf-ai-agentforce Integration
+### sf-ai-agentforce Integration (Agent DevOps)
 
-**When deploying for Agentforce agents:**
-- sf-ai-agentforce MUST use sf-deploy for all Flow and Apex deployments
-- Deploy order: Apex classes → Flows → then agent can use `flow://` targets
-- Agent publishing uses `sf agent publish authoring-bundle` (NOT sf-deploy)
+**Complete DevOps guide**: See `docs/agent-deployment-guide.md` for comprehensive agent deployment documentation.
 
-**Common Agentforce Deployment Pattern:**
+#### Agent Metadata Types
+
+| Metadata Type | Description |
+|---------------|-------------|
+| `Bot` | Top-level chatbot definition |
+| `BotVersion` | Version configuration |
+| `GenAiPlannerBundle` | Reasoning engine (LLM config) |
+| `GenAiPlugin` | Topic definition |
+| `GenAiFunction` | Action definition |
+
+#### Agent Pseudo Metadata Type
+
+The `Agent` pseudo type syncs all agent components at once:
+
 ```bash
-# 1. sf-apex creates InvocableMethod class
-# 2. sf-deploy deploys Apex
-Skill(skill="sf-deploy")
-Request: "Deploy ApexClass:CaseCreationService to [alias] with tests"
+# Retrieve agent + all dependencies from org
+sf project retrieve start --metadata Agent:[AgentName] --target-org [alias]
 
-# 3. sf-flow creates Flow wrapper
-# 4. sf-deploy deploys Flow
-Skill(skill="sf-deploy")
-Request: "Deploy Flow:Create_Support_Case to [alias]"
-
-# 5. sf-ai-agentforce publishes agent (separate command)
-sf agent publish authoring-bundle --api-name AgentName --target-org [alias]
+# Deploy agent metadata to org
+sf project deploy start --metadata Agent:[AgentName] --target-org [alias]
 ```
+
+#### Agent Lifecycle Commands
+
+```bash
+# Activate agent (makes available to users)
+sf agent activate --api-name [AgentName] --target-org [alias]
+
+# Deactivate agent (REQUIRED before making changes)
+sf agent deactivate --api-name [AgentName] --target-org [alias]
+
+# Preview agent (simulated mode - safe testing)
+sf agent preview --api-name [AgentName] --target-org [alias]
+
+# Preview agent (live mode - real Apex/Flows)
+sf agent preview --api-name [AgentName] --use-live-actions --client-app [App] --target-org [alias]
+
+# Validate Agent Script syntax
+sf afdx agent validate --api-name [AgentName] --target-org [alias]
+```
+
+#### Full Agent Deployment Workflow
+
+```bash
+# 1. Deploy Apex classes (if any)
+sf project deploy start --metadata ApexClass --target-org [alias]
+
+# 2. Deploy Flows
+sf project deploy start --metadata Flow --target-org [alias]
+
+# 3. Validate Agent Script
+sf afdx agent validate --api-name [AgentName] --target-org [alias]
+
+# 4. Publish agent
+sf agent publish --api-name [AgentName] --target-org [alias]
+
+# 5. Preview (simulated mode)
+sf agent preview --api-name [AgentName] --target-org [alias]
+
+# 6. Activate
+sf agent activate --api-name [AgentName] --target-org [alias]
+```
+
+#### Modifying Existing Agents
+
+**⚠️ Deactivation Required**: You MUST deactivate an agent before modifying topics, actions, or system instructions.
+
+```bash
+# 1. Deactivate
+sf agent deactivate --api-name [AgentName] --target-org [alias]
+
+# 2. Make changes to Agent Script
+
+# 3. Re-publish
+sf agent publish --api-name [AgentName] --target-org [alias]
+
+# 4. Re-activate
+sf agent activate --api-name [AgentName] --target-org [alias]
+```
+
+#### Sync Agent Between Orgs
+
+```bash
+# 1. Retrieve from source org
+sf project retrieve start --metadata Agent:[AgentName] --target-org source-org
+
+# 2. Deploy dependencies to target org first
+sf project deploy start --metadata ApexClass,Flow --target-org target-org
+
+# 3. Deploy agent metadata
+sf project deploy start --metadata Agent:[AgentName] --target-org target-org
+
+# 4. Publish agent in target org
+sf agent publish --api-name [AgentName] --target-org target-org
+
+# 5. Activate in target org
+sf agent activate --api-name [AgentName] --target-org target-org
+```
+
+#### Agent-Specific CLI Reference
+
+| Command | Description |
+|---------|-------------|
+| `sf agent publish --api-name X` | Publish authoring bundle |
+| `sf agent activate --api-name X` | Activate published agent |
+| `sf agent deactivate --api-name X` | Deactivate agent for changes |
+| `sf agent preview --api-name X` | Preview agent behavior |
+| `sf afdx agent validate --api-name X` | Validate Agent Script syntax |
+| `sf org open agent --api-name X` | Open in Agentforce Builder |
+| `sf project retrieve start --metadata Agent:X` | Retrieve agent + components |
+| `sf project deploy start --metadata Agent:X` | Deploy agent metadata |
 
 ---
 

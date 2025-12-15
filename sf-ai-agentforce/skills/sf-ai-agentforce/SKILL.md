@@ -119,6 +119,34 @@ config:
 
 ---
 
+## Comments Syntax
+
+**Single-line comments** use the `#` (pound/hash) symbol:
+
+```agentscript
+# This is a top-level comment
+system:
+   # Comment explaining the instructions
+   instructions: "You are a helpful assistant."
+
+config:
+   agent_name: "My_Agent"  # Inline comment
+   # This describes the agent
+   description: "A helpful assistant"
+
+topic help:
+   # This topic handles help requests
+   label: "Help"
+   description: "Provides assistance"
+```
+
+**Notes:**
+- Everything after `#` on a line is ignored
+- Use comments to document complex logic or business rules
+- Comments are recommended for clarity but don't affect execution
+
+---
+
 ## ⚠️ CRITICAL: System Instructions Syntax
 
 **System instructions MUST be a single quoted string. The `|` pipe multiline syntax does NOT work in the `system:` block.**
@@ -815,6 +843,33 @@ system:
 
 ### Variables Block
 
+#### Variable Types (Complete Reference)
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `string` | Text values | `name: mutable string = "John"` |
+| `number` | Floating-point (decimals) | `price: mutable number = 99.99` |
+| `integer` | Integer values only | `count: mutable integer = 5` |
+| `long` | Long integers | `big_num: mutable long = 9999999999` |
+| `boolean` | True/False (capitalized!) | `active: mutable boolean = True` |
+| `date` | YYYY-MM-DD format | `start: mutable date = 2025-01-15` |
+| `datetime` | Full timestamp | `created: mutable datetime` |
+| `time` | Time only | `appointment: mutable time` |
+| `currency` | Money values | `total: mutable currency` |
+| `id` | Salesforce Record ID | `record_id: mutable id` |
+| `object` | Complex JSON objects | `data: mutable object = {}` |
+| `list[type]` | Collections | `items: mutable list[string]` |
+
+**Note**: Linked variables support only: `string`, `number`, `boolean`, `date`, `id`
+
+#### Variable Declaration Syntax
+
+```
+variable_name: [linked|mutable] type [= default_value]
+   description: "..."
+   [source: @Object.Field]  # Only for linked variables
+```
+
 **Linked Variables** (connect to Salesforce data):
 ```agentscript
 variables:
@@ -835,10 +890,16 @@ variables:
    # Without defaults - works in both deployment methods (tested Dec 2025)
    user_name: mutable string
       description: "User's name"
-   order_count: mutable number
+   order_count: mutable integer
       description: "Number of items in cart"
+   price_total: mutable number
+      description: "Total price with decimals"
    is_verified: mutable boolean
       description: "Whether identity is verified"
+   appointment_time: mutable time
+      description: "Scheduled appointment time"
+   birth_date: mutable date
+      description: "Customer's date of birth"
 
    # With explicit defaults - also valid (optional)
    status: mutable string = ""
@@ -939,26 +1000,56 @@ system:
 
 ### Action Definitions
 
-**Actions must be defined INSIDE topics**, not at the top level:
+**Actions must be defined INSIDE topics**, not at the top level.
+
+#### Action Properties (Complete Reference)
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `target` | String | Yes | Executable: `flow://`, `apex://`, `prompt://` |
+| `description` | String | Yes | Explains behavior/purpose for LLM decision-making |
+| `inputs` | Object | No | Input parameters and requirements |
+| `outputs` | Object | No | Return parameters |
+| `label` | String | No | Display name (auto-generated from action name if omitted) |
+| `available_when` | Expression | No | Conditional availability for the LLM |
+| `require_user_confirmation` | Boolean | No | Ask customer to confirm before execution |
+| `include_in_progress_indicator` | Boolean | No | Show progress indicator during execution |
+
+#### Output Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `description` | String | Explains the output parameter |
+| `filter_from_agent` | Boolean | Set `True` to hide sensitive data from LLM reasoning context |
+| `complex_data_type_name` | String | Lightning data type (e.g., `lightning__textType`) |
+
+**Example with all properties:**
 
 ```agentscript
 topic account_lookup:
    label: "Account Lookup"
    description: "Looks up account information"
 
-   # ✅ CORRECT - Actions inside topic
+   # ✅ CORRECT - Actions inside topic with full properties
    actions:
       get_account:
          description: "Retrieves account information"
+         label: "Get Account"
+         require_user_confirmation: False
+         include_in_progress_indicator: True
          inputs:
             account_id: string
                description: "Salesforce Account ID"
          outputs:
             account_name: string
                description: "Account name"
+            ssn: string
+               description: "Social Security Number"
+               filter_from_agent: True    # Hide sensitive data from LLM
             industry: string
                description: "Account industry"
          target: "flow://Get_Account_Info"
+         available_when: @variables.is_authenticated == True
 
    reasoning:
       instructions: ->
@@ -1066,12 +1157,84 @@ process_order: @actions.create_order
 
 **Note**: Only one level of nesting - cannot nest `run` inside `run`.
 
+### Tools (Reasoning Actions)
+
+**Tools** are wrapped actions or utils functions exposed to the LLM for decision-making. They differ from regular actions in how they're invoked.
+
+#### Tools vs Actions
+
+| Aspect | Actions | Tools (Reasoning Actions) |
+|--------|---------|---------------------------|
+| **Purpose** | Define executable tasks | Expose to LLM for context-based decisions |
+| **Binding** | Optional | Required (`with` or `to`) |
+| **Availability** | Always | Conditional (`available when`) |
+| **Location** | `topic.actions:` block | `reasoning.actions:` block |
+
+#### Tool Definition
+
+Tools are defined in the `reasoning.actions` block and wrap actions with parameter binding:
+
+```agentscript
+topic order_management:
+   label: "Order Management"
+   description: "Manages customer orders"
+
+   # Define the base action
+   actions:
+      get_order_details:
+         description: "Retrieves order information"
+         inputs:
+            order_id: string
+               description: "The order ID"
+         outputs:
+            status: string
+               description: "Order status"
+         target: "flow://Get_Order_Details"
+
+   reasoning:
+      instructions: ->
+         | Help the customer with their order.
+         | Look up order details when they provide an order ID.
+
+      # Tools: wrapped actions with binding
+      actions:
+         # Tool with slot filling
+         lookup_order: @actions.get_order_details
+            with order_id=...
+            available when @variables.has_order_id == True
+
+         # Tool with topic delegation (returns to caller)
+         check_shipping: @topic.shipping
+            available when @variables.order_status == "shipped"
+
+         # Tool with one-way transition (no return)
+         go_to_returns: @utils.transition to @topic.returns
+            available when @variables.wants_return == True
+```
+
+#### Tool Reference Methods
+
+| Method | Syntax | Behavior |
+|--------|--------|----------|
+| **Topic Delegation** | `@topic.<name>` | Delegates to topic, returns control after |
+| **Transition** | `@utils.transition to` | One-way flow, no return to caller |
+| **Action Binding** | `@actions.<name>` | Wraps action with parameter binding |
+
 ### Lifecycle Blocks (before_reasoning / after_reasoning)
 
 **NEW**: Use lifecycle blocks for initialization and cleanup logic that runs automatically.
 
+#### ⚠️ CRITICAL SYNTAX RULES for Lifecycle Blocks
+
+| Rule | Details |
+|------|---------|
+| **Transition Syntax** | Use `transition to` NOT `@utils.transition to` |
+| **No Pipe (`\|`)** | The pipe command is NOT supported - use only logic/actions |
+| **after_reasoning May Skip** | If a transition occurs mid-topic, `after_reasoning` won't execute |
+
 ```agentscript
 topic conversation:
+   label: "Conversation"
    description: "Main conversation topic"
 
    # Runs BEFORE each reasoning step - use for initialization, logging, validation
@@ -1080,6 +1243,9 @@ topic conversation:
       if @variables.turn_count == 1:
          run @actions.get_timestamp
             set @variables.session_start = @outputs.current_timestamp
+      # ✅ CORRECT - Use "transition to" in lifecycle blocks
+      if @variables.needs_reset == True:
+         transition to @topic.reset_session
       run @actions.log_event
          with event_type="reasoning_started"
 
@@ -1091,14 +1257,32 @@ topic conversation:
          | Current turn: {!@variables.turn_count}
 
    # Runs AFTER each reasoning step - use for cleanup, analytics, final logging
+   # ⚠️ NOTE: This block may NOT run if a transition occurred during reasoning
    after_reasoning:
       run @actions.log_event
          with event_type="reasoning_completed"
 ```
 
+**❌ Common Mistakes in Lifecycle Blocks:**
+```agentscript
+# ❌ WRONG - @utils.transition doesn't work in lifecycle blocks
+before_reasoning:
+   if @variables.expired == True:
+      @utils.transition to @topic.expired   # FAILS!
+
+# ❌ WRONG - Pipe (|) is not supported
+before_reasoning:
+   | Setting up the session...             # FAILS!
+
+# ✅ CORRECT - Use "transition to" (no @utils)
+before_reasoning:
+   if @variables.expired == True:
+      transition to @topic.expired         # WORKS!
+```
+
 **When to use:**
-- `before_reasoning`: Session initialization, turn counting, pre-validation, state setup
-- `after_reasoning`: Cleanup, analytics, audit logging, state updates
+- `before_reasoning`: Session initialization, turn counting, pre-validation, state setup, conditional routing
+- `after_reasoning`: Cleanup, analytics, audit logging, state updates (note: may not run if transition occurs)
 
 ### Variable Setting Utilities
 
@@ -1673,29 +1857,176 @@ topic order_processing:
 
 ---
 
-## CLI Commands Reference
+## SF CLI Agent Commands Reference
+
+Complete CLI reference for Agentforce agent DevOps. For detailed guides, see:
+- `docs/agent-cli-reference.md` - Full CLI command reference
+- `docs/agent-preview-guide.md` - Preview setup with connected app
+
+### Command Quick Reference
+
+| Command | Purpose |
+|---------|---------|
+| `sf afdx agent validate` | Validate Agent Script syntax |
+| `sf agent publish` | Publish authoring bundle |
+| `sf agent preview` | Preview agent (simulated/live) |
+| `sf agent activate` | Activate published agent |
+| `sf agent deactivate` | Deactivate agent for changes |
+| `sf org open agent` | Open in Agentforce Builder |
+| `sf project retrieve start --metadata Agent:Name` | Sync agent from org |
+| `sf project deploy start --metadata Agent:Name` | Deploy agent to org |
+
+### Authoring Commands
 
 ```bash
-# Validate agent script (optional but recommended)
-sf agent validate authoring-bundle --api-name [AgentName] --target-org [alias]
+# Validate Agent Script syntax (RECOMMENDED before publish)
+sf afdx agent validate --api-name [AgentName] --target-org [alias]
 
 # Publish agent to org (creates Bot, BotVersion, GenAi metadata)
-sf agent publish authoring-bundle --api-name [AgentName] --target-org [alias]
+sf agent publish --api-name [AgentName] --target-org [alias]
 
-# Open agent in Agentforce Studio
-sf org open agent --api-name [AgentName] --target-org [alias]
+# Publish async (don't wait for completion)
+sf agent publish --api-name [AgentName] --async --target-org [alias]
+```
 
-# Activate agent
+### Preview Commands
+
+```bash
+# Preview with agent selection prompt
+sf agent preview --target-org [alias]
+
+# Preview specific agent (simulated mode - default)
+sf agent preview --api-name [AgentName] --target-org [alias]
+
+# Preview in live mode (requires connected app)
+sf agent preview --api-name [AgentName] --use-live-actions --client-app [AppName] --target-org [alias]
+
+# Preview with debug output saved
+sf agent preview --api-name [AgentName] --output-dir ./logs --apex-debug --target-org [alias]
+```
+
+**Preview Modes:**
+| Mode | Flag | Description |
+|------|------|-------------|
+| Simulated | (default) | LLM simulates action responses - safe for testing |
+| Live | `--use-live-actions` | Uses actual Apex/Flows in org - requires connected app |
+
+**See `docs/agent-preview-guide.md`** for connected app setup instructions.
+
+### Lifecycle Commands
+
+```bash
+# Activate agent (makes available to users)
 sf agent activate --api-name [AgentName] --target-org [alias]
 
-# Preview agent (requires connected app setup)
-sf agent preview --api-name [AgentName] --target-org [alias] --client-app [app]
+# Deactivate agent (REQUIRED before making changes)
+sf agent deactivate --api-name [AgentName] --target-org [alias]
+```
+
+**⚠️ Deactivation Required:** You MUST deactivate an agent before modifying topics, actions, or system instructions. After changes, re-publish and re-activate.
+
+### Sync Commands (Agent Pseudo Metadata Type)
+
+The `Agent` pseudo metadata type retrieves/deploys all agent components:
+
+```bash
+# Retrieve agent + dependencies from org
+sf project retrieve start --metadata Agent:[AgentName] --target-org [alias]
+
+# Deploy agent metadata to org
+sf project deploy start --metadata Agent:[AgentName] --target-org [alias]
+```
+
+**What Gets Synced:** Bot, BotVersion, GenAiPlannerBundle, GenAiPlugin, GenAiFunction
+
+### Management Commands
+
+```bash
+# Open agent in Agentforce Studio
+sf org open agent --api-name [AgentName] --target-org [alias]
 
 # Update plugin to latest (if commands missing)
 sf plugins install @salesforce/plugin-agent@latest
 ```
 
-**IMPORTANT**: Do NOT use `sf project deploy start` for Agent Script files. The standard Metadata API doesn't support direct `.agent` file deployment. Use `sf agent publish authoring-bundle` instead.
+### Full Deployment Workflow
+
+```bash
+# 1. Deploy Apex classes (if any)
+sf project deploy start --metadata ApexClass --target-org [alias]
+
+# 2. Deploy Flows
+sf project deploy start --metadata Flow --target-org [alias]
+
+# 3. Validate Agent Script
+sf afdx agent validate --api-name [AgentName] --target-org [alias]
+
+# 4. Publish agent
+sf agent publish --api-name [AgentName] --target-org [alias]
+
+# 5. Preview (simulated mode)
+sf agent preview --api-name [AgentName] --target-org [alias]
+
+# 6. Activate
+sf agent activate --api-name [AgentName] --target-org [alias]
+
+# 7. Preview (live mode - optional)
+sf agent preview --api-name [AgentName] --use-live-actions --client-app [App] --target-org [alias]
+```
+
+**IMPORTANT**: Do NOT use `sf project deploy start` for `.agent` files directly. Use `sf agent publish` instead.
+
+---
+
+## Agent Metadata Types Reference
+
+When working with agent metadata directly, these are the component types:
+
+| Metadata Type | Description | Example API Name |
+|---------------|-------------|------------------|
+| `Bot` | Top-level chatbot definition | `Customer_Support_Agent` |
+| `BotVersion` | Version configuration | `Customer_Support_Agent.v1` |
+| `GenAiPlannerBundle` | Reasoning engine (LLM config) | `Customer_Support_Agent_Planner` |
+| `GenAiPlugin` | Topic definition | `Order_Management_Plugin` |
+| `GenAiFunction` | Action definition | `Get_Order_Status_Function` |
+
+### Agent Pseudo Metadata Type
+
+The `Agent` pseudo type is a convenience wrapper that retrieves/deploys all related components:
+
+```bash
+# Retrieves: Bot + BotVersion + GenAiPlannerBundle + GenAiPlugin + GenAiFunction
+sf project retrieve start --metadata Agent:My_Agent --target-org [alias]
+```
+
+### Retrieving Specific Components
+
+```bash
+# Retrieve just the bot definition
+sf project retrieve start --metadata Bot:[AgentName] --target-org [alias]
+
+# Retrieve just the planner bundle
+sf project retrieve start --metadata GenAiPlannerBundle:[BundleName] --target-org [alias]
+
+# Retrieve all plugins (topics)
+sf project retrieve start --metadata GenAiPlugin --target-org [alias]
+
+# Retrieve all functions (actions)
+sf project retrieve start --metadata GenAiFunction --target-org [alias]
+```
+
+### Metadata Relationships
+
+```
+Bot (Agent Definition)
+└── BotVersion (Version Config)
+    └── GenAiPlannerBundle (Reasoning Engine)
+        ├── GenAiPlugin (Topic 1)
+        │   ├── GenAiFunction (Action 1)
+        │   └── GenAiFunction (Action 2)
+        └── GenAiPlugin (Topic 2)
+            └── GenAiFunction (Action 3)
+```
 
 ---
 

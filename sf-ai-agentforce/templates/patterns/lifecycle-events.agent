@@ -12,11 +12,17 @@
 #   - after_reasoning: Runs AFTER each reasoning step (use for cleanup/logging)
 #   - These are deterministic - they ALWAYS run, unlike LLM-chosen actions
 #
+# ★ CRITICAL SYNTAX RULES for Lifecycle Blocks:
+#   1. Use "transition to" NOT "@utils.transition to" for transitions
+#   2. The pipe (|) command is NOT supported in lifecycle blocks
+#   3. after_reasoning may NOT run if a transition occurs mid-topic
+#
 # ★ Common Use Cases:
 #   - Increment conversation turn counter
 #   - Fetch fresh data before each response
 #   - Log conversation analytics after each turn
 #   - Reset temporary flags
+#   - Conditional routing based on state (use "transition to")
 #
 # This is a PARTIAL template - integrate into a complete agent file
 
@@ -75,6 +81,11 @@ topic conversation:
       if @variables.turn_count == 1:
          run @actions.get_timestamp
             set @variables.session_start = @outputs.current_timestamp
+
+      # ★ CORRECT: Use "transition to" (not @utils.transition to) in lifecycle blocks
+      # Example: Route away if session expired
+      # if @variables.session_expired == True:
+      #    transition to @topic.session_expired
 
       # Refresh context before every turn
       run @actions.refresh_context

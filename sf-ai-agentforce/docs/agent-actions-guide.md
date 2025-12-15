@@ -21,6 +21,83 @@ Agent Actions are the executable capabilities that Agentforce agents can perform
 
 ---
 
+## Action Properties Reference
+
+All actions in Agent Script support these properties:
+
+### Action Definition Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `target` | String | Yes | Executable: `flow://`, `apex://`, `prompt://` |
+| `description` | String | Yes | Explains behavior for LLM decision-making |
+| `inputs` | Object | No | Input parameters and requirements |
+| `outputs` | Object | No | Return parameters |
+| `label` | String | No | Display name (auto-generated if omitted) |
+| `available_when` | Expression | No | Conditional availability for the LLM |
+| `require_user_confirmation` | Boolean | No | Ask user to confirm before execution |
+| `include_in_progress_indicator` | Boolean | No | Show progress indicator during execution |
+
+### Output Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `description` | String | Explains the output parameter |
+| `filter_from_agent` | Boolean | Set `True` to hide sensitive data from LLM |
+| `complex_data_type_name` | String | Lightning data type mapping |
+
+### Action Invocation Methods
+
+Agent Script supports two invocation styles:
+
+| Method | Syntax | Behavior |
+|--------|--------|----------|
+| **Deterministic** | `run @actions.name` | Always executes when code path is reached |
+| **LLM-Controlled** | `{!@actions.name}` | LLM decides whether to execute based on context |
+
+**Deterministic (Always Executes):**
+```agentscript
+before_reasoning:
+   run @actions.log_turn    # Always runs
+
+# In action callbacks
+create: @actions.create_order
+   run @actions.send_email  # Always runs after create_order
+```
+
+**LLM-Controlled (LLM Decides):**
+```agentscript
+reasoning:
+   instructions: ->
+      | Use {!@actions.get_order} to look up order details when asked.
+```
+
+### Example with All Properties
+
+```agentscript
+actions:
+   process_payment:
+      description: "Processes payment for the order"
+      label: "Process Payment"
+      require_user_confirmation: True    # Ask user before executing
+      include_in_progress_indicator: True
+      inputs:
+         amount: number
+            description: "Payment amount"
+         card_token: string
+            description: "Tokenized card number"
+      outputs:
+         transaction_id: string
+            description: "Transaction reference"
+         card_last_four: string
+            description: "Last 4 digits of card"
+            filter_from_agent: True     # Hide from LLM context
+      target: "flow://Process_Payment"
+      available_when: @variables.cart_total > 0
+```
+
+---
+
 ## Action Type 1: Flow Actions
 
 ### Overview

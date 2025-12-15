@@ -28,11 +28,15 @@ class AgentScriptValidator:
     # Valid resource prefixes
     VALID_RESOURCES = ["@variables", "@actions", "@topic", "@outputs", "@utils"]
 
-    # Valid variable types
-    VALID_TYPES = ["string", "number", "boolean", "list", "object"]
+    # Valid variable types (expanded Dec 2025)
+    VALID_TYPES = [
+        "string", "number", "integer", "long", "boolean",
+        "date", "datetime", "time", "currency", "id",
+        "list", "object"
+    ]
 
     # Valid action targets
-    VALID_TARGETS = ["flow://", "apex://"]
+    VALID_TARGETS = ["flow://", "apex://", "prompt://"]
 
     # Required linked variables for messaging context
     REQUIRED_LINKED_VARS = ["EndUserId", "RoutableId", "ContactId"]
@@ -79,6 +83,8 @@ class AgentScriptValidator:
         self._validate_instructions(content, lines)
         self._validate_security(content, lines)
         self._validate_references(content)
+        self._validate_lifecycle_blocks(content, lines)
+        self._validate_filter_from_agent(content)
 
         # Calculate total score
         total_score = sum(cat["score"] for cat in self.scores.values())
@@ -543,6 +549,70 @@ class AgentScriptValidator:
                     "error",
                     deduction=3,
                 )
+
+    def _validate_lifecycle_blocks(self, content: str, lines: List[str]):
+        """Validate lifecycle blocks (before_reasoning/after_reasoning) syntax.
+
+        Critical rules per official Salesforce docs:
+        1. Use 'transition to' NOT '@utils.transition to' in lifecycle blocks
+        2. Pipe (|) is NOT supported in lifecycle blocks
+        """
+        # Find before_reasoning and after_reasoning blocks
+        lifecycle_block_pattern = r"(before_reasoning|after_reasoning):\s*\n((?:\s{6}.*\n)*)"
+
+        for match in re.finditer(lifecycle_block_pattern, content, re.MULTILINE):
+            block_type = match.group(1)
+            block_content = match.group(2)
+
+            # Check for @utils.transition in lifecycle blocks (WRONG syntax)
+            if "@utils.transition" in block_content:
+                self._add_issue(
+                    "Structure & Syntax",
+                    f"In '{block_type}' block: Use 'transition to' NOT '@utils.transition to'",
+                    "error",
+                    deduction=3,
+                )
+
+            # Check for pipe (|) in lifecycle blocks (NOT SUPPORTED)
+            # Only flag actual pipe commands at start of line (after spaces)
+            pipe_pattern = r"^\s+\|"
+            if re.search(pipe_pattern, block_content, re.MULTILINE):
+                self._add_issue(
+                    "Structure & Syntax",
+                    f"In '{block_type}' block: Pipe (|) command is NOT supported. Use only logic and actions.",
+                    "warning",
+                    deduction=2,
+                )
+
+    def _validate_filter_from_agent(self, content: str):
+        """Check if sensitive output fields use filter_from_agent.
+
+        Sensitive fields (ssn, password, credit_card, etc.) in action outputs
+        should use filter_from_agent: True to hide from LLM context.
+        """
+        # Sensitive field patterns
+        sensitive_patterns = [
+            r"ssn", r"social_security", r"password", r"secret",
+            r"credit_card", r"card_number", r"cvv", r"pin",
+            r"api_key", r"token", r"private_key"
+        ]
+
+        # Find outputs blocks
+        outputs_pattern = r"outputs:\s*\n((?:\s{9,}.*\n)*)"
+        for match in re.finditer(outputs_pattern, content, re.MULTILINE):
+            outputs_block = match.group(1)
+
+            for pattern in sensitive_patterns:
+                # Check if sensitive field name exists in outputs
+                if re.search(pattern, outputs_block, re.IGNORECASE):
+                    # Check if filter_from_agent is used
+                    if "filter_from_agent:" not in outputs_block:
+                        self._add_issue(
+                            "Security & Guardrails",
+                            f"Sensitive output field may contain '{pattern}'. Consider using 'filter_from_agent: True'",
+                            "warning",
+                            deduction=2,
+                        )
 
 
 def main():

@@ -540,13 +540,196 @@ sf org list metadata --metadata-type GenAiPlannerBundle --target-org [alias]
 
 ---
 
+## CLI Validation Commands
+
+### sf afdx agent validate
+
+Validates Agent Script syntax before publishing. **RECOMMENDED** to run before every publish.
+
+```bash
+# Validate specific agent
+sf afdx agent validate --api-name [AgentName] --target-org [alias]
+```
+
+**What It Checks:**
+- Agent Script syntax validity
+- Required blocks present (system, config, language)
+- Variable declarations and references
+- Topic transitions and action definitions
+
+**Common Validation Errors:**
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `SyntaxError: Unexpected token` | Invalid syntax | Check indentation, colons, quotes |
+| `ReferenceError: Unknown variable` | Variable not defined | Add to `variables:` block |
+| `TypeError: Invalid type` | Wrong data type | Use valid type (string, number, boolean, etc.) |
+| `ValidationError: Missing required field` | Missing config field | Add required field (e.g., `default_agent_user`) |
+
+**Example Workflow:**
+```bash
+# 1. Validate first (catches errors early)
+sf afdx agent validate --api-name My_Agent --target-org myorg
+
+# 2. Only publish if validation passes
+sf agent publish --api-name My_Agent --target-org myorg
+```
+
+---
+
+## Agent Testing with sf agent test create
+
+Create automated tests for your agent using YAML specifications.
+
+### Test Spec YAML Structure
+
+```yaml
+# agent-tests.yaml
+testCases:
+  - name: "Order Status Check"
+    utterance: "What is my order status?"
+    expectedTopic: "order_management"
+    expectedActions:
+      - "get_order_status"
+
+  - name: "Escalation Request"
+    utterance: "I want to speak to a human"
+    expectedTopic: "escalation"
+    expectedActions:
+      - "escalate"
+
+  - name: "FAQ Question"
+    utterance: "What are your business hours?"
+    expectedTopic: "faq"
+    expectedActions: []  # No actions expected
+
+  - name: "Account Lookup"
+    utterance: "Can you look up account 001ABC123?"
+    expectedTopic: "account_lookup"
+    expectedActions:
+      - "get_account"
+    expectedVariables:
+      account_id: "001ABC123"
+```
+
+### Test Spec Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | String | Test case name for identification |
+| `utterance` | String | User input to test |
+| `expectedTopic` | String | Expected topic the agent should route to |
+| `expectedActions` | List | Actions that should be invoked |
+| `expectedVariables` | Object | Variables that should be set (optional) |
+
+### Running Tests
+
+```bash
+# Create tests from spec file
+sf agent test create --spec-file ./tests/agent-tests.yaml --target-org [alias]
+```
+
+---
+
+## Agent Preview Testing
+
+Preview allows testing agent behavior before production deployment.
+
+### Preview Modes
+
+| Mode | Command | Use When |
+|------|---------|----------|
+| **Simulated** | `sf agent preview --api-name X` | Apex/Flows not deployed, testing logic |
+| **Live** | `sf agent preview --api-name X --use-live-actions --client-app Y` | Integration testing with real data |
+
+### Simulated Mode (Default)
+
+- LLM simulates action responses based on descriptions
+- No actual Apex/Flow execution
+- Safe for testing - no org data changes
+- Good for rapid iteration on agent design
+
+```bash
+# Simulated mode
+sf agent preview --api-name My_Agent --target-org myorg
+```
+
+### Live Mode
+
+- Uses actual Apex/Flows in org
+- Requires connected app setup
+- Agent must be active
+- Tests end-to-end functionality
+
+```bash
+# Live mode
+sf agent preview --api-name My_Agent --use-live-actions --client-app MyAgentApp --target-org myorg
+```
+
+### Preview with Debug Output
+
+Save conversation transcripts and response files for debugging:
+
+```bash
+sf agent preview --api-name My_Agent --output-dir ./preview-logs --apex-debug --target-org myorg
+```
+
+**Output Files:**
+- `transcript.json` - Conversation record with all messages
+- `responses.json` - Full API messages with internal details
+
+### Debugging Preview Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "No active agents found" | Agent not activated | Run `sf agent activate` first |
+| "Connected app not found" | Not linked to CLI user | Run `sf org login web --client-app` |
+| Preview hangs | Action taking too long | Use `--apex-debug`, check SOQL limits |
+| Actions not executing | Actions not deployed | Deploy Apex/Flows before preview |
+
+**See `docs/agent-preview-guide.md`** for complete preview setup including connected app configuration.
+
+---
+
 ## Testing Best Practices
 
-1. **Start Simple**: Begin with Level 1 (no actions) to verify basic syntax
-2. **Deploy Dependencies First**: Flows and Apex must exist in org before agent publish
-3. **Validate Incrementally**: Test each feature addition before combining
-4. **Check User Permissions**: Ensure `default_agent_user` has Agentforce permissions
-5. **Use Explicit Errors**: If publish fails with "Internal Error", check dependencies first
+1. **Validate Early**: Run `sf afdx agent validate` before every publish
+2. **Start Simple**: Begin with Level 1 (no actions) to verify basic syntax
+3. **Deploy Dependencies First**: Flows and Apex must exist in org before agent publish
+4. **Test in Simulated Mode First**: Use simulated preview for rapid iteration
+5. **Validate Incrementally**: Test each feature addition before combining
+6. **Check User Permissions**: Ensure `default_agent_user` has Agentforce permissions
+7. **Use Explicit Errors**: If publish fails with "Internal Error", check dependencies first
+8. **Save Transcripts**: Use `--output-dir` to capture test sessions for review
+9. **Test Edge Cases**: Include unexpected inputs in test specs to validate guardrails
+10. **Automate Tests**: Use `sf agent test create` for regression testing
+
+---
+
+## Complete Testing Workflow
+
+```bash
+# 1. Validate Agent Script syntax
+sf afdx agent validate --api-name My_Agent --target-org myorg
+
+# 2. Deploy dependencies (Apex, Flows)
+sf project deploy start --metadata ApexClass,Flow --target-org myorg
+
+# 3. Publish agent
+sf agent publish --api-name My_Agent --target-org myorg
+
+# 4. Preview in simulated mode (quick iteration)
+sf agent preview --api-name My_Agent --target-org myorg
+
+# 5. Activate agent
+sf agent activate --api-name My_Agent --target-org myorg
+
+# 6. Preview in live mode (integration testing)
+sf agent preview --api-name My_Agent --use-live-actions --client-app MyApp --target-org myorg
+
+# 7. Run automated tests
+sf agent test create --spec-file ./tests/agent-tests.yaml --target-org myorg
+```
 
 ---
 
