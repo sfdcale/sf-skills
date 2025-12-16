@@ -1201,27 +1201,28 @@ Complete CLI reference for Agentforce agent DevOps. For detailed guides, see:
 
 | Command | Purpose |
 |---------|---------|
-| `sf afdx agent validate` | Validate Agent Script syntax |
-| `sf agent publish` | Publish authoring bundle |
+| `sf agent validate authoring-bundle` | Validate Agent Script syntax |
+| `sf agent publish authoring-bundle` | Publish authoring bundle |
 | `sf agent preview` | Preview agent (simulated/live) |
 | `sf agent activate` | Activate published agent |
 | `sf agent deactivate` | Deactivate agent for changes |
-| `sf org open agent` | Open in Agentforce Builder |
+| `sf org open -f <agent-file>` | Open in Agentforce Builder |
 | `sf project retrieve start --metadata Agent:Name` | Sync agent from org |
 | `sf project deploy start --metadata Agent:Name` | Deploy agent to org |
+
+> ⚠️ Commands are in beta. Use `--help` to verify flags. See [agent-cli-reference.md](../../docs/agent-cli-reference.md).
 
 ### Authoring Commands
 
 ```bash
 # Validate Agent Script syntax (RECOMMENDED before publish)
-sf afdx agent validate --api-name [AgentName] --target-org [alias]
+sf agent validate authoring-bundle --api-name [AgentName] --target-org [alias]
 
-# Publish agent to org (creates Bot, BotVersion, GenAi metadata)
-sf agent publish --api-name [AgentName] --target-org [alias]
-
-# Publish async (don't wait for completion)
-sf agent publish --api-name [AgentName] --async --target-org [alias]
+# Publish agent to org (creates Bot, BotVersion, AiAuthoringBundle metadata)
+sf agent publish authoring-bundle --api-name [AgentName] --target-org [alias]
 ```
+
+> ⚠️ **No `--source-dir` or `--async` flags!** Commands auto-find bundles in DX project.
 
 ### Preview Commands
 

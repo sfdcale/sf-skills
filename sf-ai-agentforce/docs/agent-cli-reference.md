@@ -12,42 +12,46 @@ This document covers all SF CLI commands for working with Agentforce agents. Com
 
 | Command | Purpose | Stage |
 |---------|---------|-------|
-| `sf afdx agent validate` | Validate Agent Script syntax | Authoring |
-| `sf agent publish` | Publish authoring bundle | Authoring |
+| `sf agent validate authoring-bundle` | Validate Agent Script syntax | Authoring |
+| `sf agent publish authoring-bundle` | Publish authoring bundle | Authoring |
 | `sf agent preview` | Preview agent behavior | Testing |
 | `sf agent activate` | Activate published agent | Deployment |
 | `sf agent deactivate` | Deactivate agent for changes | Deployment |
-| `sf org open agent` | Open in Agentforce Builder | Management |
 | `sf project retrieve start --metadata Agent:Name` | Sync agent from org | Sync |
 | `sf project deploy start --metadata Agent:Name` | Deploy agent to org | Sync |
+
+> ⚠️ **Note**: These commands are in beta. Use `--help` to verify current flags.
 
 ---
 
 ## Authoring Commands
 
-### sf afdx agent validate
+### sf agent validate authoring-bundle
 
-Validates Agent Script syntax before publishing.
+Validates Agent Script syntax before publishing. The command searches your DX project for authoring bundles.
 
 ```bash
-sf afdx agent validate [flags]
+sf agent validate authoring-bundle [flags]
 ```
 
 **Flags:**
 
 | Flag | Description | Required |
 |------|-------------|----------|
-| `--api-name` | Agent API name to validate | Yes |
-| `--target-org` | Org username or alias | No (uses default) |
+| `-n, --api-name` | API name of authoring bundle to validate | No (prompts if omitted) |
+| `-o, --target-org` | Org username or alias | No (uses default) |
+| `--api-version` | Override API version | No |
+
+> ⚠️ **No `--source-dir` flag!** The command finds bundles in your DX project automatically.
 
 **Examples:**
 
 ```bash
-# Validate specific agent
-sf afdx agent validate --api-name Customer_Support_Agent --target-org myorg
+# Validate with interactive selection (prompts for bundle)
+sf agent validate authoring-bundle --target-org myorg
 
-# Validate using default org
-sf afdx agent validate --api-name My_Agent
+# Validate specific bundle
+sf agent validate authoring-bundle --api-name Customer_Support_Agent --target-org myorg
 ```
 
 **Common Errors:**
@@ -55,39 +59,37 @@ sf afdx agent validate --api-name My_Agent
 | Error | Cause | Solution |
 |-------|-------|----------|
 | `SyntaxError: Unexpected token` | Invalid Agent Script syntax | Check indentation, colons, quotes |
-| `ReferenceError: Unknown variable` | Variable not defined | Add variable to variables block |
-| `TypeError: Invalid type` | Wrong data type used | Use valid type (string, number, boolean, etc.) |
+| `type integer is not supported` | Using `integer` or `long` type | Use `number` instead |
+| `Unexpected '<'` | Using `list<type>` syntax | Use `list[type]` (square brackets) |
 
 ---
 
-### sf agent publish
+### sf agent publish authoring-bundle
 
 Publishes the authoring bundle to create or update the agent in the org.
 
 ```bash
-sf agent publish [flags]
+sf agent publish authoring-bundle [flags]
 ```
 
 **Flags:**
 
 | Flag | Description | Required |
 |------|-------------|----------|
-| `--api-name` | Agent API name | Yes |
-| `--target-org` | Org username or alias | No (uses default) |
-| `--async` | Don't wait for completion | No |
-| `--wait` | Minutes to wait (default: 33) | No |
+| `-n, --api-name` | API name of authoring bundle to publish | No (prompts if omitted) |
+| `-o, --target-org` | Org username or alias | No (uses default) |
+| `--api-version` | Override API version | No |
+
+> ⚠️ **No `--source-dir`, `--async`, or `--wait` flags!** The command finds bundles in your DX project automatically.
 
 **Examples:**
 
 ```bash
-# Publish agent and wait for completion
-sf agent publish --api-name Customer_Support_Agent --target-org myorg
+# Publish with interactive selection (prompts for bundle)
+sf agent publish authoring-bundle --target-org myorg
 
-# Publish async (don't wait)
-sf agent publish --api-name Customer_Support_Agent --async --target-org myorg
-
-# Publish with custom wait time
-sf agent publish --api-name Customer_Support_Agent --wait 60 --target-org myorg
+# Publish specific bundle
+sf agent publish authoring-bundle --api-name Customer_Support_Agent --target-org myorg
 ```
 
 **What Gets Published:**
@@ -95,7 +97,7 @@ sf agent publish --api-name Customer_Support_Agent --wait 60 --target-org myorg
 The publish command creates/updates these metadata types:
 - `Bot` - Top-level chatbot definition
 - `BotVersion` - Version configuration
-- `GenAiPlannerBundle` - Reasoning engine configuration
+- `AiAuthoringBundle` - Agent Script metadata (visible in UI)
 - `GenAiPlugin` - Topics
 - `GenAiFunction` - Actions
 
@@ -271,26 +273,30 @@ sf agent activate --api-name My_Agent --target-org myorg
 
 ## Management Commands
 
-### sf org open agent
+### sf org open (with Agent)
 
-Opens the agent in Agentforce Builder (web UI).
+Opens the agent in Agentforce Builder (web UI) by specifying the Agent Script file path.
 
 ```bash
-sf org open agent [flags]
+sf org open -f <path-to-agent-file> [flags]
 ```
 
 **Flags:**
 
 | Flag | Description | Required |
 |------|-------------|----------|
-| `--api-name` | Agent API name | Yes |
-| `--target-org` | Org username or alias | No (uses default) |
+| `-f, --source-file` | Path to Agent metadata file | Yes |
+| `-o, --target-org` | Org username or alias | No (uses default) |
+| `-b, --browser` | Browser to use (chrome/edge/firefox) | No |
 
 **Examples:**
 
 ```bash
-# Open agent in builder
-sf org open agent --api-name Customer_Support_Agent --target-org myorg
+# Open agent in Agentforce Builder
+sf org open --source-file force-app/main/default/aiAuthoringBundles/My_Agent/My_Agent.agent --target-org myorg
+
+# Or navigate directly to Agentforce Studio
+sf org open --path /lightning/setup/AgentStudio/home --target-org myorg
 ```
 
 ---
@@ -397,16 +403,17 @@ sf project retrieve start --metadata GenAiPlugin --target-org myorg
 ### New Agent Development
 
 ```bash
-# 1. Create Agent Script file (.agent)
-# 2. Validate syntax
-sf afdx agent validate --api-name My_Agent --target-org myorg
+# 1. Create Agent Script file (.agent) in force-app/main/default/aiAuthoringBundles/
 
-# 3. Deploy dependencies (Apex, Flows)
+# 2. Validate syntax
+sf agent validate authoring-bundle --api-name My_Agent --target-org myorg
+
+# 3. Deploy dependencies (Apex, Flows) BEFORE publishing
 sf project deploy start --source-dir force-app/main/default/classes --target-org myorg
 sf project deploy start --source-dir force-app/main/default/flows --target-org myorg
 
-# 4. Publish agent
-sf agent publish --api-name My_Agent --target-org myorg
+# 4. Publish agent (validates, compiles, creates metadata)
+sf agent publish authoring-bundle --api-name My_Agent --target-org myorg
 
 # 5. Preview (simulated mode)
 sf agent preview --api-name My_Agent --target-org myorg
@@ -427,10 +434,10 @@ sf agent deactivate --api-name My_Agent --target-org myorg
 # 2. Edit Agent Script file
 
 # 3. Validate
-sf afdx agent validate --api-name My_Agent --target-org myorg
+sf agent validate authoring-bundle --api-name My_Agent --target-org myorg
 
 # 4. Re-publish
-sf agent publish --api-name My_Agent --target-org myorg
+sf agent publish authoring-bundle --api-name My_Agent --target-org myorg
 
 # 5. Test with preview
 sf agent preview --api-name My_Agent --target-org myorg
@@ -461,6 +468,6 @@ sf agent activate --api-name My_Agent --target-org target-org
 ## Related Documentation
 
 - [Agent Preview Guide](./agent-preview-guide.md) - Detailed preview setup including Connected App
-- [Agent Script Syntax](./agent-script-syntax.md) - Complete syntax reference
+- [Agent Script Syntax](./agent-script-syntax.md) - Complete syntax reference with Test Matrix
 - [Agent Actions Guide](./agent-actions-guide.md) - Action configuration
-- [Testing and Validation Guide](./testing-validation-guide.md) - Testing workflows
+- [Agent Script Quick Reference](./agent-script-quick-reference.md) - Common errors and gotchas
