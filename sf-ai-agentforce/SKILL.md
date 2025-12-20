@@ -320,6 +320,48 @@ inputs:
 
 ---
 
+## ⛔ INVALID KEYWORDS - NEVER GENERATE
+
+**The following keywords DO NOT EXIST in Agent Script. Using them causes SyntaxError.**
+
+| Invalid Keyword | Error | Why It Happens | Correct Pattern |
+|-----------------|-------|----------------|-----------------|
+| `internal_actions` | `SyntaxError: Unexpected 'internal_actions'` | Claude may invent this for "local helper functions" | Use `set` statements directly in action blocks |
+| `helper_actions` | Not a valid keyword | Same as above | Use `set` statements directly |
+| `private_actions` | Not a valid keyword | Same as above | Use `set` statements directly |
+| `local_actions` | Not a valid keyword | Same as above | Use `set` statements directly |
+
+**Root Cause**: When needing simple post-action operations (like incrementing a counter), Claude may extrapolate from general programming patterns and invent "local function" syntax that doesn't exist.
+
+**Example: Simple Variable Update After Action**
+
+```agentscript
+# ❌ WRONG - internal_actions does not exist
+internal_actions:
+    increment_counter:
+        set @variables.count = @variables.count + 1
+
+reasoning:
+    actions:
+        process: @actions.create_case
+            run @actions.increment_counter   # ❌ Can't reference internal action
+
+# ✅ CORRECT - Use set directly in the action block
+reasoning:
+    actions:
+        create_support_case: @actions.create_case
+            with inp_CustomerId=@variables.ContactId
+            with inp_Subject=...
+            set @variables.case_number = @outputs.out_CaseNumber
+            set @variables.cases_created = @variables.cases_created + 1  # ✅ Direct set!
+```
+
+**⚠️ For AiAuthoringBundle**: The `run` keyword is NOT supported. Use only `set` statements for post-action variable updates.
+
+**📖 See Also**: `templates/patterns/action-callbacks.agent` for complete patterns.
+
+---
+
 ## ⚠️ CRITICAL: Action Target Syntax (Tested Dec 2025)
 
 ### Action Targets by Deployment Method
