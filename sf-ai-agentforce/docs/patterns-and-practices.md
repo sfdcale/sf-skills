@@ -199,6 +199,93 @@ reasoning:
 
 ---
 
+### Topic Delegation Pattern (@topic.*)
+
+**Delegation** allows a topic to "consult" another topic and receive control back, unlike permanent transitions.
+
+```agentscript
+# ═══════════════════════════════════════════════════════════
+# DELEGATION vs TRANSITION
+# ═══════════════════════════════════════════════════════════
+#
+# DELEGATION (@topic.*):     Control CAN return to caller
+# TRANSITION (@utils.transition): Control does NOT return
+#
+# ═══════════════════════════════════════════════════════════
+
+topic main_hub:
+   description: "Main conversation hub"
+   reasoning:
+      actions:
+         # DELEGATION - specialist returns control when done
+         consult_billing: @topic.billing_specialist
+            description: "Ask billing expert for help"
+            available when @variables.needs_billing_help == True
+
+         # TRANSITION - permanent move, no return
+         go_checkout: @utils.transition to @topic.checkout
+            # Note: no description on transitions!
+
+topic billing_specialist:
+   description: "Billing expert that returns to caller"
+   reasoning:
+      instructions: ->
+         | Answer billing questions.
+         | When done, control returns to main_hub.
+```
+
+| Feature | Delegation (`@topic.*`) | Transition (`@utils.transition to`) |
+|---------|------------------------|-------------------------------------|
+| Returns to caller? | ✅ YES | ❌ NO (permanent) |
+| Use in `reasoning.actions` | ✅ YES | ✅ YES |
+| Use in `before/after_reasoning` | ❌ NO | ✅ YES (bare syntax) |
+| Best for | Consult & return | Menu/workflow navigation |
+
+---
+
+### N-ary Boolean Expressions
+
+AgentScript supports **3 or more conditions** chained with `and`/`or`:
+
+```agentscript
+# ═══════════════════════════════════════════════════════════
+# THREE+ CONDITIONS WITH AND
+# ═══════════════════════════════════════════════════════════
+
+before_reasoning:
+   if @variables.is_authenticated and @variables.has_permission and @variables.is_active:
+      transition to @topic.authorized
+
+# ═══════════════════════════════════════════════════════════
+# THREE+ CONDITIONS WITH OR
+# ═══════════════════════════════════════════════════════════
+
+before_reasoning:
+   if @variables.is_admin or @variables.is_moderator or @variables.is_owner:
+      transition to @topic.elevated_access
+
+# ═══════════════════════════════════════════════════════════
+# IN available when CLAUSES
+# ═══════════════════════════════════════════════════════════
+
+reasoning:
+   actions:
+      process_return: @actions.handle_return
+         description: "Process customer return request"
+         available when @variables.eligible == True and @variables.order_id != None and @variables.tier != "basic"
+
+      premium_action: @actions.premium_feature
+         description: "Premium tier feature"
+         available when @variables.tier == "premium" or @variables.tier == "enterprise" or @variables.is_trial_premium == True
+```
+
+**Key Points:**
+- Chain as many conditions as needed with `and` or `or`
+- Use `()` grouping for complex expressions: `(a and b) or (c and d)`
+- Works in `if` statements and `available when` clauses
+
+---
+
 ### Combining Patterns
 
 Patterns can be combined for complex scenarios:
@@ -322,7 +409,7 @@ variables:
 start_agent topic_selector:
     description: "Routes users to the appropriate topic based on their needs"
     reasoning:
-        instructions:->
+        instructions: ->
             | Determine what the user needs help with.
             | Ask clarifying questions if the intent is unclear.
         actions:
@@ -397,7 +484,7 @@ Is the value always the same?
 #### Validate Before Critical Operations
 
 ```agentscript
-instructions:->
+instructions: ->
     if @variables.amount is None:
         | I need to know the transfer amount before proceeding.
 
@@ -441,12 +528,12 @@ system:
 
 ```agentscript
 # ✅ GOOD - User-friendly error
-instructions:->
+instructions: ->
     if @variables.api_error == True:
         | I'm having trouble completing that request right now.
 
 # ❌ BAD - Exposes internals
-instructions:->
+instructions: ->
     if @variables.api_error == True:
         | Error: SQL timeout on server db-prod-03
 ```
@@ -459,20 +546,20 @@ instructions:->
 
 ```agentscript
 # ✅ GOOD - Specific instructions
-instructions:->
+instructions: ->
     | Help the customer track their order.
     | Ask for the order number if not provided.
     | Provide the current status, estimated delivery, and tracking link.
 
 # ❌ BAD - Vague instructions
-instructions:->
+instructions: ->
     | Help with orders.
 ```
 
 #### Use Template Expressions
 
 ```agentscript
-instructions:->
+instructions: ->
     | Hello {!@variables.user_name}!
     | Your current order total is ${!@variables.cart_total}.
 ```

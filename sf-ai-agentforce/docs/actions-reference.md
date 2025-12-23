@@ -42,6 +42,7 @@ All actions in Agent Script support these properties:
 | `available_when` | Expression | No | Conditional availability for the LLM |
 | `require_user_confirmation` | Boolean | No | Ask user to confirm before execution |
 | `include_in_progress_indicator` | Boolean | No | Show progress indicator during execution |
+| `progress_indicator_message` | String | No | Custom message shown during execution (e.g., "Processing your request...") |
 
 ### Output Properties
 
@@ -952,13 +953,34 @@ Skills invoked:
 
 ## Connection Block (Escalation Routing)
 
-The `connection` block enables escalation to human agents via Omni-Channel.
+The `connection` block enables escalation to human agents via Omni-Channel. Both singular (`connection`) and plural (`connections`) forms are supported.
+
+### Basic Syntax
 
 ```agentscript
+# Messaging channel (most common)
 connection messaging:
    outbound_route_type: "OmniChannelFlow"
    outbound_route_name: "Support_Queue_Flow"
    escalation_message: "Transferring you to a human agent..."
+   adaptive_response_allowed: True
+```
+
+### Multiple Channels
+
+```agentscript
+# Use plural form for multiple channels
+connections:
+   messaging:
+      escalation_message: "Transferring to messaging agent..."
+      outbound_route_type: "OmniChannelFlow"
+      outbound_route_name: "agent_support_flow"
+      adaptive_response_allowed: True
+   telephony:
+      escalation_message: "Routing to technical support..."
+      outbound_route_type: "OmniChannelFlow"
+      outbound_route_name: "technical_support_flow"
+      adaptive_response_allowed: False
 ```
 
 ### Connection Block Properties
@@ -968,8 +990,16 @@ connection messaging:
 | `outbound_route_type` | String | Yes | **MUST be `"OmniChannelFlow"`** - only valid value |
 | `outbound_route_name` | String | Yes | API name of Omni-Channel Flow (must exist in org) |
 | `escalation_message` | String | Yes | Message shown to user during transfer |
+| `adaptive_response_allowed` | Boolean | No | Allow agent to adapt responses during escalation (default: False) |
 
-**⚠️ CRITICAL**: Values like `"queue"`, `"skill"`, `"agent"` cause validation errors!
+### Supported Channels
+
+| Channel | Description | Use Case |
+|---------|-------------|----------|
+| `messaging` | Chat/messaging channels | Enhanced Chat, Web Chat, In-App |
+| `telephony` | Voice/phone channels | Service Cloud Voice, phone support |
+
+**⚠️ CRITICAL**: Values like `"queue"`, `"skill"`, `"agent"` for `outbound_route_type` cause validation errors!
 
 ### Escalation Action
 

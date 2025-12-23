@@ -361,6 +361,35 @@ reasoning:
 
 ## ⚠️ CRITICAL: Action Target Syntax (Tested Dec 2025)
 
+### Complete Action Type Reference (22 Types)
+
+AgentScript supports 22+ action target types. Use the appropriate protocol prefix:
+
+| Short Name | Long Name (Alias) | Description | Use When |
+|------------|-------------------|-------------|----------|
+| `flow` | `flow` | Salesforce Flow | ✅ **PRIMARY** - Most reliable, recommended for all actions |
+| `apex` | `apex` | Apex Class (@InvocableMethod) | Custom server-side logic (use Flow wrapper in AiAuthoringBundle) |
+| `prompt` | `generatePromptResponse` | Prompt Template | AI content generation |
+| `standardInvocableAction` | `standardInvocableAction` | Built-in Salesforce actions | Standard platform actions (send email, create task) |
+| `externalService` | `externalService` | External API via OpenAPI schema | External system calls via External Services |
+| `quickAction` | `quickAction` | Object-specific quick actions | Quick actions (log call, create related record) |
+| `api` | `api` | REST API calls | Direct Salesforce API calls |
+| `apexRest` | `apexRest` | Apex REST endpoints | Custom REST services |
+| `serviceCatalog` | `createCatalogItemRequest` | Service Catalog requests | IT service requests, catalog items |
+| `integrationProcedureAction` | `executeIntegrationProcedure` | OmniStudio Integration Procedure | OmniStudio/Vlocity integrations |
+| `expressionSet` | `runExpressionSet` | Expression Set calculations | Business rule calculations |
+| `cdpMlPrediction` | `cdpMlPrediction` | CDP ML predictions | Customer Data Platform ML models |
+| `externalConnector` | `externalConnector` | External system connector | Pre-built external connectors |
+| `slack` | `slack` | Slack integration | Slack-specific actions |
+| `namedQuery` | `namedQuery` | Predefined SOQL queries | Named queries for data retrieval |
+| `auraEnabled` | `auraEnabled` | Aura-enabled Apex methods | Lightning component methods |
+| `mcpTool` | `mcpTool` | Model Context Protocol tools | MCP tool integrations |
+| `retriever` | `retriever` | Knowledge retrieval | Knowledge base searches |
+
+**Target Format**: `<type>://<DeveloperName>` (e.g., `flow://Get_Account_Info`, `standardInvocableAction://sendEmail`)
+
+**⚠️ 0-shot Tip**: If you need a built-in action, check if `standardInvocableAction://` applies before creating a custom Flow.
+
 ### Action Targets by Deployment Method
 
 | Target Type | GenAiPlannerBundle | AiAuthoringBundle |
@@ -1019,8 +1048,8 @@ topic help:
 | Block | Key Rules |
 |-------|-----------|
 | **system** | `instructions:` MUST be a single quoted string (NO pipes `\|`) |
-| **config** | Use `agent_name` (not `developer_name`). `default_agent_user` must be valid org user. |
-| **variables** | Use `number` not `integer/long`. Use `list[type]` not `list<type>`. |
+| **config** | Use `agent_name` or `developer_name` (both work). `default_agent_user` must be valid org user. |
+| **variables** | Use `number` not `integer/long`. Use `timestamp` not `datetime`. Use `list[type]` not `list<type>`. Linked vars don't support lists/objects. |
 | **language** | Required block - include even if only `en_US`. |
 | **topics** | Each topic MUST have both `label:` and `description:`. |
 | **instructions** | Use `instructions: ->` (space before arrow). |
@@ -1090,7 +1119,7 @@ reasoning:
 - Valid Agent Script syntax (-10 if parsing fails)
 - Consistent indentation (no mixing tabs/spaces) (-3 per violation)
 - Required blocks present (system, config, start_agent, language) (-5 each missing)
-- Uses `agent_name` not `developer_name` (-5 if wrong)
+- Uses `agent_name` or `developer_name` (both valid)
 - File extension is `.agent` (-5 if wrong)
 
 ### Topic Design (20 points)
@@ -1510,7 +1539,7 @@ python3 ~/.claude/plugins/marketplaces/sf-skills/sf-agentforce/hooks/scripts/val
 | Insight | Issue | Fix |
 |---------|-------|-----|
 | File Extension | `.agentscript` not recognized | Use `.agent` |
-| Config Field | `developer_name` causes deploy failure | Use `agent_name` |
+| Config Field | `developer_name` OR `agent_name` | Both work (aliases for same field) |
 | Instructions Syntax | `instructions:->` fails | Use `instructions: ->` (space!) |
 | Topic Fields | Missing `label` fails deploy | Add both `label` and `description` |
 | Linked Variables | Missing context variables | Add EndUserId, RoutableId, ContactId |
@@ -1530,13 +1559,15 @@ python3 ~/.claude/plugins/marketplaces/sf-skills/sf-agentforce/hooks/scripts/val
 | **Action Location** | Top-level actions fail | Define actions inside topics |
 | **Flow Targets** | `flow://` works in both deployment methods | Ensure Flow deployed before agent publish, names match exactly |
 | **`run` Keyword** | Action chaining syntax | Use `run @actions.x` for callbacks (GenAiPlannerBundle only) |
-| **Lifecycle Blocks** | before/after_reasoning available | Use for initialization and cleanup |
+| **Lifecycle Blocks** | before/after_reasoning available | Use bare `transition to` (not `@utils.transition`) in lifecycle blocks |
 | **`@utils.set`/`setVariables`** | "Unknown utils declaration type" error | Use `set` keyword in instructions instead (AiAuthoringBundle) |
 | **`escalate` Action Name** | "Unexpected 'escalate'" error | `escalate` is reserved - use `go_to_escalate` or `transfer_to_human` |
 | **Connection `outbound_route_type`** | Invalid values cause validation errors | MUST be `"OmniChannelFlow"` - not `queue`/`skill`/`agent` |
 | **Connection `escalation_message`** | Missing field causes parse errors | REQUIRED when other connection fields are present |
 | **Connection OmniChannelFlow** | HTTP 404 at "Publish Agent" step | Referenced flow must exist in org or BotDefinition NOT created |
 | **Nested if statements** | Parse errors ("Missing required element", "Unexpected 'else'") | Use flat conditionals with `and` operators instead |
+| **N-ary boolean operations** | Need 3+ conditions | ✅ Fully supported: `@variables.a and @variables.b and @variables.c` works |
+| **Topic delegation vs transition** | `@utils.transition` = permanent; `@topic.*` = can return | See [agent-script-reference.md](docs/agent-script-reference.md#topic-delegation-vs-transition) |
 | **Math operators (`+`, `-`)** | Works in set and conditions | `set @variables.x = @variables.x + 1` is valid |
 | **Action attributes** | `require_user_confirmation`, `include_in_progress_indicator`, `label` | Work in AiAuthoringBundle (validated Dec 2025) |
 

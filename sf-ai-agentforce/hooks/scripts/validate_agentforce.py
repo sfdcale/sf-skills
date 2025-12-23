@@ -5,7 +5,7 @@ Validates Agent Script syntax and best practices.
 Scoring: 100 points across 6 categories.
 
 Updated to match official Salesforce Agent Script syntax (Dec 2025):
-- Uses agent_name (not developer_name)
+- Uses agent_name OR developer_name (both work - they're aliases)
 - Uses TAB indentation (recommended) or consistent spaces
 - CRITICAL: Never mix tabs and spaces (causes parse errors)
 - Uses instructions: -> (space before arrow)
@@ -13,6 +13,8 @@ Updated to match official Salesforce Agent Script syntax (Dec 2025):
 - Requires linked variables (EndUserId, RoutableId, ContactId)
 - Requires language: block
 - File extension should be .agent (not .agentscript)
+- Supports 22+ action target types (flow, apex, prompt, standardInvocableAction, etc.)
+- Mutable variables: use 'number' not integer/long, use 'timestamp' not datetime
 """
 
 import re
@@ -29,15 +31,51 @@ class AgentScriptValidator:
     # Valid resource prefixes
     VALID_RESOURCES = ["@variables", "@actions", "@topic", "@outputs", "@utils"]
 
-    # Valid variable types (expanded Dec 2025)
-    VALID_TYPES = [
-        "string", "number", "integer", "long", "boolean",
-        "date", "datetime", "time", "currency", "id",
-        "list", "object"
+    # Valid variable types for mutable variables (Dec 2025)
+    # Note: integer/long → use number, datetime → use timestamp
+    VALID_MUTABLE_TYPES = [
+        "string", "number", "boolean", "date", "timestamp",
+        "currency", "id", "list", "object"
     ]
 
-    # Valid action targets
-    VALID_TARGETS = ["flow://", "apex://", "prompt://"]
+    # Types that should trigger warnings (deprecated/unsupported for mutable)
+    DEPRECATED_TYPES = {
+        "integer": "number",
+        "long": "number",
+        "datetime": "timestamp",
+        "time": None,  # Not supported at all
+    }
+
+    # Valid types for linked variables (more restricted)
+    VALID_LINKED_TYPES = [
+        "string", "number", "boolean", "date", "timestamp", "currency", "id"
+    ]
+
+    # All valid action target types (22+ types as of Dec 2025)
+    VALID_TARGETS = [
+        "flow://",                      # Salesforce Flow (PRIMARY - most reliable)
+        "apex://",                      # Apex Class (@InvocableMethod)
+        "prompt://",                    # Prompt Template (alias: generatePromptResponse)
+        "generatePromptResponse://",    # Prompt Template (long form)
+        "standardInvocableAction://",   # Built-in Salesforce actions
+        "externalService://",           # External API via OpenAPI schema
+        "quickAction://",               # Object-specific quick actions
+        "api://",                        # REST API calls
+        "apexRest://",                  # Apex REST endpoints
+        "serviceCatalog://",            # Service Catalog (alias: createCatalogItemRequest)
+        "createCatalogItemRequest://",  # Service Catalog (long form)
+        "integrationProcedureAction://",# OmniStudio Integration Procedure
+        "executeIntegrationProcedure://",# OmniStudio (long form)
+        "expressionSet://",             # Expression Set calculations
+        "runExpressionSet://",          # Expression Set (long form)
+        "cdpMlPrediction://",           # CDP ML predictions
+        "externalConnector://",         # External system connector
+        "slack://",                     # Slack integration
+        "namedQuery://",                # Predefined SOQL queries
+        "auraEnabled://",               # Aura-enabled Apex methods
+        "mcpTool://",                   # Model Context Protocol tools
+        "retriever://",                 # Knowledge retrieval
+    ]
 
     # Required linked variables for messaging context
     REQUIRED_LINKED_VARS = ["EndUserId", "RoutableId", "ContactId"]
@@ -205,19 +243,14 @@ class AgentScriptValidator:
 
     def _validate_config(self, content: str):
         """Validate config block has correct fields."""
-        # Check for agent_name (correct) vs developer_name (incorrect)
-        if re.search(r"developer_name:", content) and not re.search(r"agent_name:", content):
-            self._add_issue(
-                "Structure & Syntax",
-                "Use 'agent_name:' instead of 'developer_name:' in config block",
-                "error",
-                deduction=5,
-            )
+        # Check for agent_name OR developer_name (both work - they're aliases)
+        has_agent_name = re.search(r"agent_name:", content)
+        has_developer_name = re.search(r"developer_name:", content)
 
-        if not re.search(r"agent_name:", content):
+        if not has_agent_name and not has_developer_name:
             self._add_issue(
                 "Structure & Syntax",
-                "Missing 'agent_name' in config block",
+                "Missing 'agent_name' or 'developer_name' in config block",
                 "error",
                 deduction=3,
             )
@@ -345,11 +378,28 @@ class AgentScriptValidator:
             var_type = match.group(2)
             defined_vars.add(var_name)
 
-            # Check type is valid
-            if var_type not in self.VALID_TYPES:
+            # Check for deprecated types first
+            if var_type in self.DEPRECATED_TYPES:
+                replacement = self.DEPRECATED_TYPES[var_type]
+                if replacement:
+                    self._add_issue(
+                        "Variable Management",
+                        f"Mutable variable '{var_name}' uses deprecated type '{var_type}'. Use '{replacement}' instead.",
+                        "error",
+                        deduction=3,
+                    )
+                else:
+                    self._add_issue(
+                        "Variable Management",
+                        f"Type '{var_type}' is NOT supported for mutable variables ('{var_name}')",
+                        "error",
+                        deduction=3,
+                    )
+            # Check type is valid for mutable
+            elif var_type not in self.VALID_MUTABLE_TYPES and not var_type.startswith("list["):
                 self._add_issue(
                     "Variable Management",
-                    f"Unknown variable type '{var_type}' for '{var_name}'",
+                    f"Unknown variable type '{var_type}' for mutable variable '{var_name}'",
                     "warning",
                     deduction=2,
                 )
@@ -358,7 +408,25 @@ class AgentScriptValidator:
         linked_pattern = r"^[ \t]+(\w+):\s*linked\s+(\w+)"
         for match in re.finditer(linked_pattern, content, re.MULTILINE):
             var_name = match.group(1)
+            var_type = match.group(2)
             defined_vars.add(var_name)
+
+            # Check type is valid for linked (more restricted - no list, no object)
+            if var_type not in self.VALID_LINKED_TYPES:
+                if var_type in ["list", "object"] or var_type.startswith("list["):
+                    self._add_issue(
+                        "Variable Management",
+                        f"Linked variable '{var_name}' cannot use type '{var_type}'. Lists and objects are NOT supported for linked variables.",
+                        "error",
+                        deduction=3,
+                    )
+                else:
+                    self._add_issue(
+                        "Variable Management",
+                        f"Unknown type '{var_type}' for linked variable '{var_name}'",
+                        "warning",
+                        deduction=2,
+                    )
 
         # Check for variable descriptions (supports tabs or spaces)
         var_block_pattern = r"^[ \t]+(\w+):\s*(?:mutable|linked)\s+\w+.*\n((?:[ \t]+.*\n)*)"

@@ -216,9 +216,24 @@ system:
       error: "Sorry, an error occurred."
 ```
 
+**✅ Template Expressions Work in System Instructions:**
+
+While pipe syntax doesn't work, template expressions `{!expression}` ARE supported in system.instructions:
+
+```agentscript
+# ✅ Template expressions work in system.instructions
+system:
+   instructions: "Welcome {!@variables.user_name}! You are speaking with {!@variables.agent_persona}. Today's date is {!@variables.current_date}."
+   messages:
+      welcome: "Hello {!@variables.user_name}!"
+      error: "Sorry, an error occurred."
+```
+
+This allows dynamic personalization in the system prompt while still using a quoted string.
+
 ### Config Block
 
-Defines agent metadata. **Required fields**: agent_name, default_agent_user, agent_label, description.
+Defines agent metadata. **Required fields**: agent_name/developer_name, default_agent_user, agent_label, description.
 
 **📝 NOTE: No Separate Config File!** All configuration goes directly in the `.agent` file's `config:` block. There is no separate `.agentscript`, `.agentconfig`, or similar config file format.
 
@@ -228,16 +243,45 @@ config:
    default_agent_user: "agent.user@company.salesforce.com"
    agent_label: "Customer Support"
    description: "Helps customers with orders and inquiries"
+   agent_type: "AgentforceServiceAgent"
+   enable_enhanced_event_logs: False
 ```
+
+**Core Fields:**
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | `agent_name` | Yes | API name (letters, numbers, underscores only) |
+| `developer_name` | Yes | Same as agent_name - use one or the other (not both) |
 | `default_agent_user` | Yes | Username for agent execution context |
 | `agent_label` | Yes | Human-readable name |
 | `description` | Yes | What the agent does |
 
-**IMPORTANT**: Use `agent_name` (not `developer_name`)!
+**Optional Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `agent_type` | String | `"AgentforceServiceAgent"` | Agent type: `"AgentforceServiceAgent"` or `"AgentforceEmployeeAgent"` |
+| `enable_enhanced_event_logs` | Boolean | `False` | Enable detailed event logging for debugging |
+| `agent_template` | String | `None` | Base template for agent behavior |
+| `outbound_flow` | String | `None` | Flow to invoke for outbound messages |
+| `additional_parameter__*` | Any | — | Dynamic parameters (prefix with `additional_parameter__`) |
+
+**Example with all fields:**
+```agentscript
+config:
+   developer_name: "Enterprise_Service_Agent"
+   default_agent_user: "service.agent@company.salesforce.com"
+   agent_label: "Enterprise Service Agent"
+   description: "Handles complex enterprise service requests"
+   agent_type: "AgentforceServiceAgent"
+   enable_enhanced_event_logs: True
+   outbound_flow: "Send_Welcome_Message"
+   additional_parameter__tier: "enterprise"
+   additional_parameter__region: "AMER"
+```
+
+**NOTE**: Both `agent_name` and `developer_name` work (they're aliases for the same field). Use one or the other, not both.
 
 ### Variables Block
 
@@ -285,15 +329,50 @@ Locale settings. **Required for deployment**.
 ```agentscript
 language:
    default_locale: "en_US"
-   additional_locales: ""
+   additional_locales: "en_GB,de,fr"
    all_additional_locales: False
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `default_locale` | String | Yes | Primary locale (e.g., "en_US") |
+| `additional_locales` | String | No | Comma-separated additional locales (e.g., "en_GB,de,fr") |
+| `all_additional_locales` | Boolean | No | Set `True` to support all available locales |
+
+**Locale Format**: Use standard locale codes like `en_US`, `en_GB`, `de`, `fr`, `es`, `ja`, etc.
 
 ### Topic Blocks
 
 Define conversation topics. **Each topic requires `label:` and `description:`**.
 
-**Entry point topic** (required):
+### start_agent Block (Entry Point)
+
+**Every agent MUST have exactly one `start_agent` block** - this is the entry point where conversations begin.
+
+**Two forms are supported:**
+
+```agentscript
+# Named form (recommended for multi-topic agents)
+start_agent topic_selector:
+   label: "Topic Selector"
+   description: "Routes users to appropriate topics"
+
+# Unnamed form (simpler, for single-topic agents)
+start_agent:
+   label: "Main Topic"
+   description: "Handles all user requests"
+```
+
+**When to use each:**
+
+| Form | Syntax | Use When |
+|------|--------|----------|
+| **Named** | `start_agent topic_name:` | Multi-topic agent with routing |
+| **Unnamed** | `start_agent:` | Single-topic agent, no routing needed |
+
+**Named form** creates a topic that can be referenced with `@topic.topic_name` for transitions back to the entry point.
+
+**Entry point example** (named, recommended):
 ```agentscript
 start_agent topic_selector:
    label: "Topic Selector"
@@ -418,7 +497,40 @@ topic general:
 
 **Notes**:
 - Boolean values must be capitalized: `True`, `False`
-- Linked variables support only: `string`, `number`, `boolean`, `date`, `id`
+
+### Type Restrictions: Mutable vs Linked Variables
+
+**Mutable variables** (state you modify during conversation):
+
+| Type | Mutable | Notes |
+|------|---------|-------|
+| `string` | ✅ | Primary text type |
+| `number` | ✅ | Use for ALL numeric (integer + decimal) |
+| `boolean` | ✅ | Must use `True`/`False` |
+| `date` | ✅ | YYYY-MM-DD format |
+| `timestamp` | ✅ | Use instead of `datetime` |
+| `currency` | ✅ | Money values |
+| `id` | ✅ | Salesforce Record IDs |
+| `list[type]` | ✅ | `list[string]`, `list[number]`, `list[boolean]` only |
+| `object` | ✅ | Complex types with `complex_data_type_name` |
+| `datetime` | ❌ | **Use `timestamp` instead** |
+| `time` | ❌ | Not supported for mutable variables |
+| `integer` | ❌ | **Use `number` instead** |
+| `long` | ❌ | **Use `number` instead** |
+
+**Linked variables** (connect to Salesforce data):
+
+| Type | Linked | Notes |
+|------|--------|-------|
+| `string` | ✅ | Most common for IDs as strings |
+| `number` | ✅ | Numeric fields |
+| `boolean` | ✅ | Checkbox fields |
+| `date` | ✅ | Date fields |
+| `timestamp` | ✅ | DateTime fields |
+| `currency` | ✅ | Currency fields |
+| `id` | ✅ | Salesforce ID fields |
+| `list[*]` | ❌ | **Collections NOT supported for linked** |
+| `object` | ❌ | **Complex types NOT supported for linked** |
 
 ### Advanced `object` Type with Lightning Data Types (Tested Dec 2025)
 
@@ -442,20 +554,82 @@ outputs:
       is_displayable: False
 ```
 
-**Lightning Data Types (`complex_data_type_name`):**
-- `lightning__textType` - Text/String values
-- `lightning__numberType` - Numeric values
-- `lightning__booleanType` - Boolean True/False
-- `lightning__dateTimeStringType` - DateTime as string
+### Lightning Data Types (`complex_data_type_name`)
+
+Lightning Types are Salesforce's complex type system for action inputs/outputs. Use them when you need explicit type mapping between AgentScript and Flows/Apex.
+
+**When to use:**
+- Passing data to/from Flows with specific Salesforce types
+- Ensuring proper serialization of complex values
+- Mapping record types and relationships
+
+**Available Lightning Types:**
+
+| Lightning Type | Use For | Base Type |
+|---------------|---------|-----------|
+| `lightning__textType` | Text/String values | `string` |
+| `lightning__numberType` | Numeric values (integer/decimal) | `number` |
+| `lightning__booleanType` | Boolean True/False | `boolean` |
+| `lightning__dateTimeStringType` | DateTime as ISO string | `timestamp` |
+| `lightning__recordInfoType` | Salesforce Record references | `id` |
+| `lightning__currencyType` | Currency values | `currency` |
+| `lightning__dateType` | Date values (no time) | `date` |
+| `lightning__percentType` | Percentage values | `number` |
+| `lightning__urlType` | URL/hyperlink values | `string` |
+| `lightning__emailType` | Email addresses | `string` |
+| `lightning__phoneType` | Phone numbers | `string` |
+
+**Example with complex types:**
+```agentscript
+actions:
+   update_record: flow://Update_Customer_Record
+      inputs:
+         customer_id: object
+            description: "Customer record ID"
+            complex_data_type_name: "lightning__recordInfoType"
+         update_date: object
+            description: "Date of update"
+            complex_data_type_name: "lightning__dateTimeStringType"
+      outputs:
+         success: object
+            complex_data_type_name: "lightning__booleanType"
+```
 
 **Input Attributes:** `is_required`, `is_user_input`, `label`, `complex_data_type_name`
 
-**Output Attributes:** `filter_from_agent`, `is_used_by_planner`, `is_displayable`, `complex_data_type_name`
+**Output Attributes and Defaults:**
+
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `filter_from_agent` | Boolean | `False` | Hide sensitive output from LLM (still stored) |
+| `is_used_by_planner` | Boolean | `True`* | Allow LLM to use output for reasoning |
+| `is_displayable` | Boolean | `False` | Show output to user in chat |
+| `complex_data_type_name` | String | — | Lightning type for Salesforce integration |
+
+***Default behavior for `is_used_by_planner`:**
+- Defaults to `True` UNLESS `filter_from_agent` is `True`
+- When `filter_from_agent: True`, `is_used_by_planner` automatically becomes `False`
+- This prevents sensitive data from reaching the LLM
+
+**Example - Sensitive data handling:**
+```agentscript
+outputs:
+   customer_name: string
+      description: "Customer's name"
+      is_used_by_planner: True     # LLM can use this
+      is_displayable: True         # User sees this
+
+   ssn_last_four: string
+      description: "Last 4 of SSN (for verification)"
+      filter_from_agent: True      # Hidden from LLM
+      is_used_by_planner: False    # Auto-set by filter_from_agent
+      is_displayable: False        # Don't show user
+```
 
 **⚠️ CRITICAL: `filter_from_agent` is NOT supported in AiAuthoringBundle!**
 - Causes "Unexpected 'filter_from_agent'" syntax error
 - Use conditional topic routing in instructions as alternative
-- May work in GenAiPlannerBundle
+- Works in GenAiPlannerBundle
 
 ### Data Type Mappings with Flow (Tested Dec 2025)
 
@@ -516,12 +690,37 @@ Use the `@` prefix to reference resources.
 | Outputs | `@outputs.field` | Action output values | ✅ Supported |
 | Utilities | `@utils.transition` | Built-in utilities | ✅ Supported |
 | Utilities | `@utils.escalate` | Escalate to human | ✅ Supported |
-| Utilities | `@utils.setVariables` | Set multiple variables | ❌ NOT Supported |
-| Utilities | `@utils.set` | Set single variable | ❌ NOT Supported |
+| Utilities | `@utils.setVariables` | Set multiple variables | ⚠️ GenAiPlannerBundle only |
+| Utilities | `@utils.set` | Set single variable | ⚠️ GenAiPlannerBundle only |
 
-**⚠️ CRITICAL: `@utils.setVariables` and `@utils.set` are NOT supported in AiAuthoringBundle (Tested Dec 2025)**
+### @utils.setVariables Usage
 
-These utilities cause "Unknown utils declaration type" errors. Use the `set` keyword in instructions instead:
+**In GenAiPlannerBundle (Supported):**
+
+```agentscript
+# ✅ GenAiPlannerBundle - @utils.setVariables works
+reasoning:
+   actions:
+      set_some_variables: @utils.setVariables
+         description: "Set user context variables"
+         available when @variables.needs_update == True
+         with user_name=...         # LLM slot-fills, inherits type from variable
+         with visit_count=@variables.visit_count + 1   # Fixed expression
+
+      clear_session: @utils.setVariables
+         description: "Reset session state"
+         with is_logged_in=False
+         with cart_items=[]
+```
+
+**Key Behaviors:**
+- `with var=...` - LLM slot-fills the value (inherits type from variable definition)
+- `with var=@expression` - Fixed value from expression (not slot-filled)
+- Types must match variable declarations
+
+**In AiAuthoringBundle (NOT Supported):**
+
+⚠️ `@utils.setVariables` and `@utils.set` cause "Unknown utils declaration type" errors in AiAuthoringBundle. Use the `set` keyword in instructions instead:
 
 ```agentscript
 # ❌ WRONG - @utils.setVariables NOT supported in AiAuthoringBundle
@@ -531,7 +730,7 @@ reasoning:
          with user_name=...
          with is_verified=True
 
-# ✅ CORRECT - Use 'set' keyword in instructions
+# ✅ CORRECT - Use 'set' keyword in instructions (AiAuthoringBundle)
 reasoning:
    instructions: ->
       | Ask the user for their name.
@@ -795,6 +994,47 @@ if not @variables.is_blocked:
    | Access granted.
 ```
 
+### N-ary Boolean Operations (3+ Operands)
+
+**AgentScript fully supports N-ary boolean operations** - you can chain 3 or more conditions with `and` or `or` operators. This is the recommended pattern instead of nested if statements.
+
+```agentscript
+# ✅ Three+ conditions with AND
+if @variables.is_authenticated and @variables.has_permission and @variables.is_active:
+   transition to @topic.authorized
+
+# ✅ Three+ conditions with OR
+if @variables.is_admin or @variables.is_moderator or @variables.is_owner:
+   transition to @topic.elevated_access
+
+# ✅ Complex multi-condition check (4+ operands)
+if @variables.verified and @variables.amount > 0 and @variables.email is not None and @variables.consent == True:
+   | All validation criteria met. Proceeding with order.
+
+# ✅ N-ary in available when (action conditional availability)
+actions:
+   process_return: @actions.process_return
+      description: "Process a product return"
+      available when @variables.eligible == True and @variables.order_id is not None and @variables.tier != "basic"
+
+   apply_premium_discount: @actions.calculate_discount
+      description: "Apply premium customer discount"
+      available when @variables.is_premium or @variables.loyalty_years > 5 or @variables.total_spent > 10000
+```
+
+**⚠️ Mixing `and`/`or`**: While you can chain multiple `and` or multiple `or` operators, avoid mixing them without clear grouping (parentheses are NOT supported). Use separate conditions for complex mixed logic.
+
+```agentscript
+# ⚠️ AVOID - Mixed and/or can be ambiguous
+if @variables.a and @variables.b or @variables.c:   # Unclear precedence
+
+# ✅ PREFER - Separate conditions for clarity
+if @variables.a and @variables.b:
+   | Path A: Both A and B are true.
+if @variables.c:
+   | Path B: C is true.
+```
+
 ### ⚠️ CRITICAL: Nested If Statements NOT Supported (Tested Dec 2025)
 
 **Nested if statements (if inside if) cause parse errors in AiAuthoringBundle!**
@@ -842,6 +1082,49 @@ if @variables.total - 50 < 0:
 |----------|---------------|---------------|---------|
 | `+` | ✅ Yes | ✅ Yes | `set @variables.x = @variables.x + 1` |
 | `-` | ✅ Yes | ✅ Yes | `if @variables.total - 50 < 0:` |
+
+### Additional Expression Features
+
+**Length function (`len`):**
+```agentscript
+# Check if list is empty
+if len(@variables.cart_items) == 0:
+   | Your cart is empty.
+
+# Check list size for pagination
+if len(@variables.results) > 10:
+   | Showing first 10 of {!len(@variables.results)} results.
+```
+
+**Ternary expression (`x if condition else y`):**
+```agentscript
+# Conditional value assignment
+set @variables.greeting = "VIP" if @variables.is_premium else "Customer"
+
+# In output context
+| Hello {!"VIP" if @variables.tier == "premium" else "valued customer"}!
+```
+
+**Unary negation (`-`):**
+```agentscript
+# Negate a value
+set @variables.offset = -@variables.amount
+```
+
+**⚠️ Grouping Parentheses:**
+Parentheses `()` for expression grouping are NOT well-supported. Avoid complex expressions that require precedence grouping:
+
+```agentscript
+# ⚠️ AVOID - complex grouped expressions may not parse
+if (@variables.a and @variables.b) or @variables.c:
+   | This may not work.
+
+# ✅ PREFER - split into separate conditions
+if @variables.a and @variables.b:
+   | Path A.
+if @variables.c:
+   | Path C.
+```
 
 ---
 
@@ -1119,16 +1402,31 @@ Use `before_reasoning` and `after_reasoning` blocks for automatic initialization
 | **No Pipe (`\|`)** | The pipe command is NOT supported - use only logic/actions |
 | **after_reasoning May Skip** | If a transition occurs mid-topic, `after_reasoning` won't execute |
 
+### Transition Syntax by Context (0-shot Critical)
+
+| Context | Correct Syntax | Wrong Syntax |
+|---------|----------------|--------------|
+| `reasoning.actions:` | `go_x: @utils.transition to @topic.x` | `go_x: transition to @topic.x` |
+| `before_reasoning:` | `transition to @topic.x` | `@utils.transition to @topic.x` ❌ |
+| `after_reasoning:` | `transition to @topic.x` | `@utils.transition to @topic.x` ❌ |
+| After action `set` | `transition to @topic.x` | `@utils.transition to @topic.x` |
+
 ```agentscript
 # ❌ WRONG - @utils.transition doesn't work in lifecycle blocks
 before_reasoning:
    if @variables.expired == True:
       @utils.transition to @topic.expired   # FAILS!
 
-# ✅ CORRECT - Use "transition to" (no @utils)
+# ✅ CORRECT - Use "transition to" (no @utils) in lifecycle blocks
 before_reasoning:
    if @variables.expired == True:
       transition to @topic.expired         # WORKS!
+
+# ✅ CORRECT - Use @utils.transition in reasoning.actions
+reasoning:
+   actions:
+      go_expired: @utils.transition to @topic.expired
+         available when @variables.expired == True
 ```
 
 ### before_reasoning
@@ -1256,6 +1554,40 @@ reasoning:
    actions:
       go_orders: @utils.transition to @topic.orders
 ```
+
+### Topic Delegation vs Transition
+
+**AgentScript supports two ways to move between topics with different behaviors:**
+
+| Feature | `@utils.transition to` | `@topic.*` (delegation) |
+|---------|------------------------|-------------------------|
+| Returns to calling topic? | ❌ NO (permanent handoff) | ✅ YES (can return) |
+| Use in `reasoning.actions` | ✅ Yes | ✅ Yes |
+| Use in lifecycle blocks | ✅ Yes (use bare `transition to`) | ❌ No |
+| Typical use case | Menu routing, permanent flow changes | Consult specialist, get help, then continue |
+
+**Transition (permanent handoff):**
+```agentscript
+# Control moves to orders topic and STAYS there
+reasoning:
+   actions:
+      go_orders: @utils.transition to @topic.orders
+         # User will continue in orders topic
+```
+
+**Delegation (can return):**
+```agentscript
+# Control moves to specialist topic, which can return back
+reasoning:
+   actions:
+      consult_specialist: @topic.specialist_topic
+         description: "Consult specialist for complex questions"
+         available when @variables.needs_expert_help == True
+```
+
+**When to use each:**
+- **`@utils.transition to`**: Menu navigation, workflow steps where you don't return
+- **`@topic.*`**: Getting expert help, asking a sub-topic then continuing the current flow
 
 ### ⚠️ CRITICAL: @utils.transition Cannot Have Description on Next Line (Tested Dec 2025)
 
@@ -1431,12 +1763,30 @@ reasoning:
 
 **The connection block is REQUIRED for `@utils.escalate` to route to Omni-Channel.**
 
+Both `connection` (singular) and `connections` (plural) forms are supported.
+
 ```agentscript
 # ✅ CORRECT - Connection block for Omni-Channel routing
 connection messaging:
    outbound_route_type: "OmniChannelFlow"
    outbound_route_name: "Support_Queue_Flow"
    escalation_message: "Transferring you to a human agent now..."
+   adaptive_response_allowed: True
+```
+
+**Multiple Channels** (use plural `connections:` form):
+```agentscript
+connections:
+   messaging:
+      escalation_message: "Transferring to messaging agent..."
+      outbound_route_type: "OmniChannelFlow"
+      outbound_route_name: "agent_support_flow"
+      adaptive_response_allowed: True
+   telephony:
+      escalation_message: "Routing to technical support..."
+      outbound_route_type: "OmniChannelFlow"
+      outbound_route_name: "technical_support_flow"
+      adaptive_response_allowed: False
 ```
 
 **⚠️ CRITICAL: Connection Block Requirements (Tested Dec 2025)**
@@ -1446,6 +1796,13 @@ connection messaging:
 | `outbound_route_type` | Yes | `"OmniChannelFlow"` only | ❌ `queue`, `skill`, `agent` NOT supported |
 | `outbound_route_name` | Yes | Flow API name | Must exist in org |
 | `escalation_message` | Yes | String message | Required when other fields present |
+| `adaptive_response_allowed` | No | `True` / `False` | Allow agent to adapt responses (default: False) |
+
+**Supported Channels:**
+| Channel | Description |
+|---------|-------------|
+| `messaging` | Chat/messaging (Enhanced Chat, Web Chat, In-App) |
+| `telephony` | Voice/phone (Service Cloud Voice) |
 
 **Common Errors:**
 - Using `outbound_route_type: "queue"` causes validation error - use `"OmniChannelFlow"`
