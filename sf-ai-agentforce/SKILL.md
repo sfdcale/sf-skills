@@ -1665,6 +1665,62 @@ Before deployment, ensure you have:
 
 ---
 
+## 🔧 LSP Integration (Real-Time Validation)
+
+This skill includes **Language Server Protocol (LSP)** integration for real-time Agent Script validation.
+
+### Prerequisites
+
+1. **VS Code with Agent Script Extension** (Required)
+   - Open VS Code → Extensions (Cmd+Shift+X)
+   - Search: "Agent Script" by Salesforce
+   - Install the extension
+
+2. **Node.js 18+** (Required)
+   - Check: `node --version`
+   - Install: `brew install node` (macOS)
+
+### Features
+
+When you edit `.agent` files, the LSP automatically provides:
+
+| Feature | Description |
+|---------|-------------|
+| ✅ Syntax Validation | Real-time error detection |
+| ✅ Auto-Fix Loop | Claude automatically fixes errors (max 3 attempts) |
+| ✅ Fast Feedback | ~50ms response time |
+
+### How It Works
+
+```
+1. Claude writes/edits .agent file
+       │
+       ▼
+2. PostToolUse hook triggers
+       │
+       ▼
+3. LSP validates syntax
+       │
+       ▼
+4. If errors → Output to Claude → Auto-fix
+   If valid → Silent success
+```
+
+### Troubleshooting
+
+**"LSP server not found"**
+- Install VS Code Agent Script extension
+- Verify: `ls ~/.vscode/extensions/salesforce.agent-script-*`
+
+**"Node.js not found"**
+- Install Node.js 18+: `brew install node`
+
+**Validation not triggering**
+- Ensure hooks are enabled in Claude Code settings
+- Check: `ls ~/.claude/plugins/marketplaces/sf-skills/sf-ai-agentforce/hooks/`
+
+---
+
 ## Reference & Dependencies
 
 **Docs**: `docs/` folder (in sf-ai-agentforce) - best-practices, agent-script-syntax
