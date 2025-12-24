@@ -57,6 +57,60 @@ Soft pastel color palette (Tailwind 200-level) with dark borders for clear defin
 └───────────────────────────┴──────────────┴────────────────┴────────────────┘
 ```
 
+## ERD Object Type Colors
+
+Color coding for data model diagrams by object type:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  OBJECT TYPE              │  FILL (200)  │  STROKE (700+) │  TEXT COLOR    │
+├───────────────────────────┼──────────────┼────────────────┼────────────────┤
+│  Standard Objects [STD]   │  #bae6fd     │  #0369a1       │  #1f2937       │
+│  Custom Objects [CUST]    │  #fed7aa     │  #c2410c       │  #1f2937       │
+│  External Objects [EXT]   │  #a7f3d0     │  #047857       │  #1f2937       │
+└───────────────────────────┴──────────────┴────────────────┴────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ERD SUBGRAPH             │  FILL (50)   │  STROKE (700+) │  STYLE         │
+├───────────────────────────┼──────────────┼────────────────┼────────────────┤
+│  Standard Group           │  #f0f9ff     │  #0369a1       │  dashed        │
+│  Custom Group             │  #fff7ed     │  #c2410c       │  dashed        │
+│  External Group           │  #ecfdf5     │  #047857       │  dashed        │
+│  Legend                   │  #f8fafc     │  #334155       │  dashed        │
+└───────────────────────────┴──────────────┴────────────────┴────────────────┘
+```
+
+### ERD Style Declarations
+
+```mermaid
+%% Standard Object - Sky Blue
+style Account fill:#bae6fd,stroke:#0369a1,color:#1f2937
+
+%% Custom Object - Orange
+style Invoice__c fill:#fed7aa,stroke:#c2410c,color:#1f2937
+
+%% External Object - Green
+style SAP_Product__x fill:#a7f3d0,stroke:#047857,color:#1f2937
+
+%% Subgraph - Standard group
+style std fill:#f0f9ff,stroke:#0369a1,stroke-dasharray:5
+
+%% Subgraph - Custom group
+style cust fill:#fff7ed,stroke:#c2410c,stroke-dasharray:5
+
+%% Subgraph - External group
+style ext fill:#ecfdf5,stroke:#047857,stroke-dasharray:5
+```
+
+### Relationship Arrow Colors
+
+| Relationship | Style | Notes |
+|--------------|-------|-------|
+| Lookup | `-->` (default) | Single-line arrow |
+| Master-Detail | `==>` | Thick double-line arrow |
+
+**Note**: Mermaid does not support individual line coloring in erDiagram. Use thick arrows (`==>`) for Master-Detail distinction in flowchart format.
+
 ## Status Colors
 
 ```

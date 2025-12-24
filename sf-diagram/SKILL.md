@@ -221,6 +221,63 @@ UK  Unique Key (External Id)
 
 ---
 
+## Enhanced ERD Features
+
+### Object Type Color Coding
+
+When using the flowchart-based ERD format, objects are color-coded by type:
+
+| Object Type | Color | Fill | Stroke |
+|-------------|-------|------|--------|
+| Standard Objects | Sky Blue | `#bae6fd` | `#0369a1` |
+| Custom Objects (`__c`) | Orange | `#fed7aa` | `#c2410c` |
+| External Objects (`__x`) | Green | `#a7f3d0` | `#047857` |
+
+### LDV (Large Data Volume) Indicators
+
+For orgs with large datasets, query record counts and display LDV indicators:
+
+```bash
+python3 ~/.claude/plugins/marketplaces/sf-skills/sf-diagram/scripts/query-org-metadata.py \
+    --objects Account,Contact,Opportunity \
+    --target-org myorg
+```
+
+Objects with >2M records display: `LDV[~4M]`
+
+### OWD (Org-Wide Defaults)
+
+Display sharing model on entities: `OWD:Private`, `OWD:ReadWrite`, `OWD:Parent`
+
+### Relationship Types
+
+| Label | Type | Arrow Style | Behavior |
+|-------|------|-------------|----------|
+| `LK` | Lookup | `-->` | Optional parent, no cascade |
+| `MD` | Master-Detail | `==>` | Required parent, cascade delete |
+
+In flowchart format:
+- Lookup: `-->` (single arrow)
+- Master-Detail: `==>` (thick double arrow)
+
+### Cloud-Specific Templates
+
+| Template | Objects | Path |
+|----------|---------|------|
+| Sales Cloud | Account, Contact, Lead, Opportunity, Product, Campaign | `templates/datamodel/sales-cloud-erd.md` |
+| Service Cloud | Case, Entitlement, Knowledge, ServiceContract | `templates/datamodel/service-cloud-erd.md` |
+
+### ERD Conventions Documentation
+
+See `docs/erd-conventions.md` for complete documentation of:
+- Object type indicators (`[STD]`, `[CUST]`, `[EXT]`)
+- LDV display format
+- OWD display format
+- Relationship type labels
+- Color palette details
+
+---
+
 ## Best Practices
 
 ### Sequence Diagrams

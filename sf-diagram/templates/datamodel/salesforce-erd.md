@@ -1,12 +1,58 @@
 # Salesforce ERD Template
 
-Entity Relationship Diagram template for visualizing Salesforce data models.
+Entity Relationship Diagram template for visualizing Salesforce data models with object type indicators, LDV markers, OWD annotations, and relationship type labels.
 
 ## When to Use
 - Documenting object relationships
 - Planning data model changes
 - Understanding existing schema
 - Design reviews and architecture discussions
+
+## Cloud-Specific Templates
+
+For pre-built cloud diagrams, see:
+- **[Sales Cloud ERD](sales-cloud-erd.md)** - Account, Contact, Opportunity, Lead, Product, Campaign
+- **[Service Cloud ERD](service-cloud-erd.md)** - Case, Entitlement, Knowledge, ServiceContract
+
+## ERD Conventions
+
+See **[ERD Conventions](../../docs/erd-conventions.md)** for full documentation.
+
+### Object Type Indicators
+
+| Indicator | Type | Color (Flowchart) |
+|-----------|------|-------------------|
+| `[STD]` | Standard Object | Sky Blue `#bae6fd` |
+| `[CUST]` | Custom Object | Orange `#fed7aa` |
+| `[EXT]` | External Object | Green `#a7f3d0` |
+
+### Relationship Type Labels
+
+| Label | Type | Arrow (Flowchart) |
+|-------|------|-------------------|
+| `LK` | Lookup | `-->` |
+| `MD` | Master-Detail | `==>` (thick) |
+
+### Metadata Annotations
+
+| Annotation | Source | Example |
+|------------|--------|---------|
+| `LDV[~4M]` | Record count >2M | Large Data Volume |
+| `OWD:Private` | Sharing model | Org-Wide Default |
+
+---
+
+## Query Org Metadata
+
+Enrich diagrams with live org data:
+
+```bash
+python3 ~/.claude/plugins/marketplaces/sf-skills/sf-diagram/scripts/query-org-metadata.py \
+    --objects Account,Contact,Opportunity,Case \
+    --target-org myorg \
+    --output table \
+    --mermaid
+```
 
 ## sf-metadata Integration
 
@@ -27,36 +73,38 @@ This returns:
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#a5f3fc',
+  'primaryColor': '#bae6fd',
   'primaryTextColor': '#1f2937',
-  'primaryBorderColor': '#0e7490',
+  'primaryBorderColor': '#0369a1',
   'lineColor': '#334155',
   'tertiaryColor': '#f8fafc'
 }}}%%
 erDiagram
-    Account ||--o{ Contact : "has many"
-    Account ||--o{ Opportunity : "has many"
-    Account ||--o{ Case : "has many"
-    Account ||--o{ Account : "parent of"
+    %% ═══════════════════════════════════════════════════════════════════════════
+    %% LEGEND - Relationship Types:
+    %%   LK = Lookup (optional parent, no cascade delete)
+    %%   MD = Master-Detail (required parent, cascade delete)
+    %% ═══════════════════════════════════════════════════════════════════════════
+
+    Account ||--o{ Contact : "LK - has many"
+    Account ||--o{ Opportunity : "LK - has many"
+    Account ||--o{ Case : "LK - has many"
+    Account ||--o{ Account : "LK - parent of"
 
     Account {
-        Id Id PK "18-char Salesforce ID"
-        Text Name "Required, max 255"
+        Id Id PK "[STD] {{LDV}}"
+        Text Name "Required"
         Lookup ParentId FK "Account (Self)"
         Lookup OwnerId FK "User"
         Picklist Industry
         Picklist Type
         Currency AnnualRevenue
         Phone Phone
-        Text BillingCity
-        Text BillingState
-        Text BillingCountry
-        DateTime CreatedDate
-        DateTime LastModifiedDate
+        Text __metadata__ "{{OWD}}"
     }
 
     Contact {
-        Id Id PK
+        Id Id PK "[STD]"
         Lookup AccountId FK "Account"
         Lookup OwnerId FK "User"
         Lookup ReportsToId FK "Contact (Self)"
@@ -64,18 +112,15 @@ erDiagram
         Text LastName "Required"
         Email Email
         Phone Phone
-        Phone MobilePhone
-        Text Title
-        Date Birthdate
-        DateTime CreatedDate
+        Text __metadata__ "{{OWD}}"
     }
 
-    Opportunity ||--o{ OpportunityLineItem : "contains"
-    Opportunity ||--o{ OpportunityContactRole : "involves"
-    Contact ||--o{ OpportunityContactRole : "plays role"
+    Opportunity ||--o{ OpportunityLineItem : "MD - contains"
+    Opportunity ||--o{ OpportunityContactRole : "MD - involves"
+    Contact ||--o{ OpportunityContactRole : "LK - plays role"
 
     Opportunity {
-        Id Id PK
+        Id Id PK "[STD] {{LDV}}"
         Lookup AccountId FK "Account"
         Lookup OwnerId FK "User"
         Text Name "Required"
@@ -83,88 +128,75 @@ erDiagram
         Date CloseDate "Required"
         Currency Amount
         Number Probability
-        Picklist LeadSource
-        Picklist Type
-        Text NextStep
-        DateTime CreatedDate
+        Text __metadata__ "{{OWD}}"
     }
 
     OpportunityContactRole {
-        Id Id PK
+        Id Id PK "[STD]"
         MasterDetail OpportunityId FK "Opportunity"
         Lookup ContactId FK "Contact"
         Picklist Role
         Checkbox IsPrimary
     }
 
-    Product2 ||--o{ PricebookEntry : "priced in"
-    Pricebook2 ||--o{ PricebookEntry : "contains"
-    PricebookEntry ||--o{ OpportunityLineItem : "used in"
+    Product2 ||--o{ PricebookEntry : "LK - priced in"
+    Pricebook2 ||--o{ PricebookEntry : "MD - contains"
+    PricebookEntry ||--o{ OpportunityLineItem : "LK - used in"
 
     Product2 {
-        Id Id PK
+        Id Id PK "[STD]"
         Text Name "Required"
         Text ProductCode
-        Text Description
         Checkbox IsActive "Required"
-        Text Family
     }
 
     Pricebook2 {
-        Id Id PK
+        Id Id PK "[STD]"
         Text Name "Required"
         Checkbox IsActive
         Checkbox IsStandard
     }
 
     PricebookEntry {
-        Id Id PK
+        Id Id PK "[STD]"
         Lookup Product2Id FK "Product2"
-        Lookup Pricebook2Id FK "Pricebook2"
+        MasterDetail Pricebook2Id FK "Pricebook2"
         Currency UnitPrice "Required"
-        Checkbox IsActive
     }
 
     OpportunityLineItem {
-        Id Id PK
+        Id Id PK "[STD]"
         MasterDetail OpportunityId FK "Opportunity"
         Lookup PricebookEntryId FK "PricebookEntry"
         Number Quantity "Required"
-        Currency UnitPrice
         Currency TotalPrice
-        Text Description
     }
 
     Case {
-        Id Id PK
+        Id Id PK "[STD] {{LDV}}"
         Lookup AccountId FK "Account"
         Lookup ContactId FK "Contact"
         Lookup OwnerId FK "User, Queue"
         Lookup ParentId FK "Case (Self)"
         Text Subject
-        TextArea Description
         Picklist Status "Required"
         Picklist Priority
         Picklist Origin
-        Picklist Type
-        Checkbox IsClosed
-        DateTime ClosedDate
+        Text __metadata__ "{{OWD}}"
     }
 
-    User ||--o{ Account : "owns"
-    User ||--o{ Contact : "owns"
-    User ||--o{ Opportunity : "owns"
-    User ||--o{ Case : "owns/assigned"
+    User ||--o{ Account : "LK - owns"
+    User ||--o{ Contact : "LK - owns"
+    User ||--o{ Opportunity : "LK - owns"
+    User ||--o{ Case : "LK - owns"
 
     User {
-        Id Id PK
+        Id Id PK "[STD]"
         Text Username "Required, Unique"
-        Text FirstName
         Text LastName "Required"
         Email Email "Required"
         Checkbox IsActive
         Lookup ProfileId FK "Profile"
-        Lookup UserRoleId FK "UserRole"
     }
 ```
 
@@ -287,43 +319,72 @@ erDiagram
 
 ## Custom Object Example
 
+Shows mixing Standard (blue) and Custom (orange) objects:
+
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#a5f3fc',
+  'primaryColor': '#bae6fd',
   'primaryTextColor': '#1f2937',
-  'primaryBorderColor': '#0e7490',
-  'lineColor': '#334155',
-  'tertiaryColor': '#f8fafc'
+  'primaryBorderColor': '#0369a1',
+  'lineColor': '#334155'
 }}}%%
 erDiagram
-    Account ||--o{ Invoice__c : "has many"
-    Invoice__c ||--o{ Invoice_Line_Item__c : "contains"
-    Product2 ||--o{ Invoice_Line_Item__c : "sold as"
+    Account ||--o{ Invoice__c : "MD - has many"
+    Invoice__c ||--o{ Invoice_Line_Item__c : "MD - contains"
+    Product2 ||--o{ Invoice_Line_Item__c : "LK - sold as"
 
     Invoice__c {
-        Id Id PK
+        Id Id PK "[CUST]"
         Text Name "Auto-Number"
         MasterDetail Account__c FK "Account"
         Lookup Contact__c FK "Contact"
         Date Invoice_Date__c "Required"
-        Date Due_Date__c
         Picklist Status__c "Draft/Sent/Paid"
         Currency Total_Amount__c "Roll-Up"
-        Currency Paid_Amount__c
-        Formula Amount_Due__c "Total - Paid"
-        Text External_Id__c UK "Integration Key"
+        Text __metadata__ "OWD:Private"
     }
 
     Invoice_Line_Item__c {
-        Id Id PK
+        Id Id PK "[CUST]"
         Text Name "Auto-Number"
         MasterDetail Invoice__c FK "Invoice__c"
         Lookup Product__c FK "Product2"
         Number Quantity__c "Required"
         Currency Unit_Price__c
         Formula Line_Total__c "Qty * Price"
-        Text Description__c
     }
+```
+
+### Flowchart Version (With Colors)
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 60, "rankSpacing": 50}} }%%
+flowchart TB
+    subgraph std["STANDARD OBJECTS"]
+        Account["Account<br/>{{LDV}} | OWD:Private"]
+        Product2["Product2"]
+    end
+
+    subgraph cust["CUSTOM OBJECTS"]
+        Invoice["Invoice__c<br/>OWD:Private"]
+        InvoiceLine["Invoice_Line_Item__c"]
+    end
+
+    Account ==>|"MD"| Invoice
+    Invoice ==>|"MD"| InvoiceLine
+    Product2 -->|"LK"| InvoiceLine
+
+    %% Standard - Sky Blue
+    style Account fill:#bae6fd,stroke:#0369a1,color:#1f2937
+    style Product2 fill:#bae6fd,stroke:#0369a1,color:#1f2937
+
+    %% Custom - Orange
+    style Invoice fill:#fed7aa,stroke:#c2410c,color:#1f2937
+    style InvoiceLine fill:#fed7aa,stroke:#c2410c,color:#1f2937
+
+    %% Subgraphs
+    style std fill:#f0f9ff,stroke:#0369a1,stroke-dasharray:5
+    style cust fill:#fff7ed,stroke:#c2410c,stroke-dasharray:5
 ```
 
 ## Best Practices
