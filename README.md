@@ -67,6 +67,120 @@ sf-apex/
 
 ### CLI Compatibility Notes
 
+<details open>
+<summary><b>Claude Code</b> (Anthropic) — Full Native Support</summary>
+
+Claude Code is the **recommended** platform for sf-skills with full native support for all features.
+
+```bash
+# Install via marketplace
+/plugin marketplace add Jaganpro/sf-skills
+```
+
+- **Install Path:** `.claude-plugin/` (per-skill plugin structure)
+- **Format:** Native SKILL.md with hooks, templates, and examples
+- **Hooks:** ✅ Automatic validation on Write/Edit operations
+- **LSP:** ✅ Real-time syntax validation with auto-fix loops
+- **Templates:** ✅ Referenced dynamically (no duplication)
+- **Tool Execution:** Local tools (Read, Write, Edit, Bash, Grep, Glob) — no MCP overhead
+- **Docs:** [claude.ai/code](https://claude.ai/code)
+
+**Why Claude Code for sf-skills:**
+- **Zero-latency tools** — Local execution vs. MCP JSON-RPC roundtrips
+- **Automatic hooks** — Validation runs on every file save without manual invocation
+- **Context efficiency** — Skills load on-demand, saving ~2000 tokens per conversation
+- **LSP integration** — Apex, Agent Script, and LWC syntax errors caught in real-time
+
+</details>
+
+#### Claude Code vs. Agentforce Vibes
+
+| Feature | Claude Code | Agentforce Vibes |
+|---------|-------------|------------------|
+| **Skills System** | ✅ Native (`SKILL.md` + hooks + templates) | ❌ No skills — uses `.clinerules` markdown |
+| **Automatic Hooks** | ✅ Validation on Write/Edit (150+ point rubrics) | ❌ No hooks — manual validation only |
+| **LSP Integration** | ✅ Real-time Apex, Agent Script, LWC validation | ❌ No LSP — relies on external linters |
+| **Tool Execution** | ✅ Local tools (zero latency) | ⚡ MCP-based (JSON-RPC overhead) |
+| **Templates** | ✅ Dynamic references (50+ templates) | 📄 Inlined in markdown (larger file size) |
+| **Context Window** | 200K tokens | Varies by model (GPT-5, SFR) |
+| **Salesforce DX MCP** | ❌ Not needed (uses `sf` CLI directly) | ✅ 20+ tools for org connectivity |
+| **Enterprise Features** | Community-driven | Trust Layer, audit logging |
+
+> **Bottom line:** Claude Code offers deeper integration (hooks, LSP, local tools) for Salesforce development. Agentforce Vibes provides enterprise compliance and native Salesforce ecosystem integration via MCP.
+
+<details>
+<summary><b>OpenCode CLI</b> — Open-Source Claude Code Alternative</summary>
+
+[OpenCode](https://github.com/opencode-ai/opencode) is an open-source alternative to Claude Code with skill support.
+
+```bash
+# Install all skills for OpenCode
+python tools/installer.py --cli opencode --all
+```
+
+- **Install Path:** `.opencode/skill/` (project) or `~/.opencode/skill/` (global)
+- **Format:** SKILL.md with scripts and templates
+- **Hooks:** ⚠️ Manual execution (run `scripts/validate_*.py`)
+- **Claude Compatibility:** Also reads `.claude/skills/` directory
+- **Docs:** [github.com/opencode-ai/opencode](https://github.com/opencode-ai/opencode)
+
+</details>
+
+<details>
+<summary><b>Codex CLI</b> (OpenAI) — GPT-Powered Coding Agent</summary>
+
+[Codex CLI](https://github.com/openai/codex) is OpenAI's terminal-based coding agent.
+
+```bash
+# Install all skills for Codex
+python tools/installer.py --cli codex --all
+```
+
+- **Install Path:** `.codex/skills/` (project) or `~/.codex/skills/` (global)
+- **Format:** SKILL.md with `assets/` (templates) and `references/` (docs)
+- **Hooks:** ⚠️ Manual execution (run `scripts/validate_*.py`)
+- **Enable Skills:** `codex --enable skills`
+- **Docs:** [github.com/openai/codex](https://github.com/openai/codex)
+
+</details>
+
+<details>
+<summary><b>Gemini CLI</b> (Google) — 1M+ Token Context</summary>
+
+[Gemini CLI](https://github.com/anthropics/gemini-cli) is Google's Gemini-powered terminal agent with massive context window.
+
+```bash
+# Install all skills for Gemini
+python tools/installer.py --cli gemini --all
+```
+
+- **Install Path:** `~/.gemini/skills/` (user scope by default)
+- **Format:** SKILL.md with scripts and templates
+- **Hooks:** ⚠️ Manual execution (run `scripts/validate_*.py`)
+- **Context:** 1M+ tokens — can load entire codebases
+- **Symlink:** `ln -s ~/.gemini/skills/sf-apex ~/.claude/skills/sf-apex`
+- **Docs:** [github.com/google-gemini/gemini-cli](https://github.com/google-gemini/gemini-cli)
+
+</details>
+
+<details>
+<summary><b>Amp CLI</b> (Sourcegraph) — Claude Code Compatible</summary>
+
+[Amp](https://sourcegraph.com/amp) is Sourcegraph's agentic coding tool, fully compatible with Claude Code skills.
+
+```bash
+# No installer needed — Amp reads Claude Code skills directly
+# Place skills in .claude/skills/ directory
+```
+
+- **Install Path:** `.claude/skills/` (same as Claude Code)
+- **Format:** Native Claude Code format (SKILL.md + hooks + templates)
+- **Hooks:** ✅ Compatible with Claude Code hooks
+- **Codebase Search:** Powered by Sourcegraph's code intelligence
+- **Docs:** [sourcegraph.com/amp](https://sourcegraph.com/amp)
+
+</details>
+
 <details>
 <summary><b>Droid CLI</b> (Factory.ai) — Claude Code Compatible</summary>
 
