@@ -2,7 +2,7 @@
 """
 SLDS 2 Validator for Lightning Web Components.
 
-Provides a 140-point scoring system across 7 categories:
+Provides a 165-point scoring system across 9 categories:
 1. SLDS Class Usage (25 pts)   - Valid SLDS 2 utility classes
 2. Accessibility (25 pts)       - aria-*, role, alt-text
 3. Dark Mode (25 pts)           - No hardcoded colors, uses CSS variables
@@ -10,6 +10,8 @@ Provides a 140-point scoring system across 7 categories:
 5. Styling Hooks (20 pts)       - Proper --slds-g-* variable usage
 6. Component Structure (15 pts) - Uses lightning-* base components
 7. Performance (10 pts)         - Efficient selectors, no !important
+8. GraphQL Patterns (15 pts)    - Proper wire adapter usage, cursor pagination
+9. Focus Management (10 pts)    - ESC handlers, focus trap for modals
 """
 
 import os
@@ -25,7 +27,7 @@ SCRIPT_DIR = Path(__file__).parent
 class SLDSValidator:
     """SLDS 2 validation engine for LWC files."""
 
-    # Maximum scores per category
+    # Maximum scores per category (165 total)
     max_scores = {
         'slds_class_usage': 25,
         'accessibility': 25,
@@ -34,6 +36,8 @@ class SLDSValidator:
         'styling_hooks': 20,
         'component_structure': 15,
         'performance': 10,
+        'graphql_patterns': 15,
+        'focus_management': 10,
     }
 
     def __init__(self, file_path: str):
@@ -433,7 +437,7 @@ class SLDSValidator:
     def _validate_js(self, scores: Dict[str, int], issues: List[Dict]):
         """Validate JavaScript controller file."""
         # JS files have limited SLDS-specific validation
-        # Focus on inline styles and classList manipulation
+        # Focus on inline styles, classList manipulation, GraphQL, and focus management
 
         for i, line in enumerate(self.lines, 1):
             # Check for inline style manipulation with colors
@@ -463,6 +467,121 @@ class SLDSValidator:
                                 'line': i,
                                 'fix': f"Verify '{cls}' is a valid SLDS 2 class"
                             })
+
+        # Check GraphQL patterns
+        self._check_graphql_patterns(scores, issues)
+
+        # Check focus management patterns
+        self._check_focus_management(scores, issues)
+
+    def _check_graphql_patterns(self, scores: Dict[str, int], issues: List[Dict]):
+        """Check for proper GraphQL wire adapter usage."""
+        content = self.content
+
+        # Check if using GraphQL wire adapter
+        has_graphql_import = 'lightning/uiGraphQLApi' in content
+        has_gql_import = "import { gql" in content or "import { graphql" in content
+
+        if has_graphql_import or has_gql_import:
+            # Verify proper patterns
+
+            # Check for storing wire result for refresh
+            if '@wire(graphql' in content or '@wire(gql' in content:
+                # Check if result is stored for refreshGraphQL
+                if 'refreshGraphQL' in content:
+                    # Good pattern - using refreshGraphQL
+                    pass
+                else:
+                    # Check if the wire is used with a function that stores result
+                    wire_pattern = r'@wire\s*\(\s*graphql[^)]*\)\s*(\w+)'
+                    matches = re.findall(wire_pattern, content)
+                    for match in matches:
+                        # If it's a function pattern, check if it stores result
+                        if f'wired{match[0].upper()}' not in content and 'Result' not in match:
+                            scores['graphql_patterns'] = max(0, scores['graphql_patterns'] - 5)
+                            issues.append({
+                                'severity': 'INFO',
+                                'category': 'graphql_patterns',
+                                'message': 'GraphQL wire result not stored for potential refresh',
+                                'line': 0,
+                                'fix': 'Store wire result in a property for use with refreshGraphQL()'
+                            })
+
+            # Check for cursor-based pagination pattern
+            if 'first:' in content and 'after:' not in content and 'pageInfo' not in content:
+                scores['graphql_patterns'] = max(0, scores['graphql_patterns'] - 3)
+                issues.append({
+                    'severity': 'INFO',
+                    'category': 'graphql_patterns',
+                    'message': 'GraphQL query uses first: but missing pagination',
+                    'line': 0,
+                    'fix': 'Add pageInfo { hasNextPage endCursor } for cursor pagination'
+                })
+
+            # Check for proper error handling
+            if 'graphQLErrors' not in content and '.errors' not in content:
+                scores['graphql_patterns'] = max(0, scores['graphql_patterns'] - 2)
+                issues.append({
+                    'severity': 'INFO',
+                    'category': 'graphql_patterns',
+                    'message': 'GraphQL error handling not detected',
+                    'line': 0,
+                    'fix': 'Handle graphQLErrors in wire result or catch block'
+                })
+
+    def _check_focus_management(self, scores: Dict[str, int], issues: List[Dict]):
+        """Check for proper focus management patterns in modals/dialogs."""
+        content = self.content
+
+        # Check if this appears to be a modal component
+        is_modal = any(indicator in content.lower() for indicator in [
+            'modal', 'dialog', 'overlay', 'popup', 'backdrop'
+        ])
+
+        if is_modal:
+            # Check for ESC key handler
+            has_esc_handler = any(pattern in content for pattern in [
+                "'Escape'", '"Escape"', 'key === 27', 'keyCode === 27',
+                "code === 'Escape'", 'code === "Escape"'
+            ])
+
+            if not has_esc_handler:
+                scores['focus_management'] = max(0, scores['focus_management'] - 3)
+                issues.append({
+                    'severity': 'WARNING',
+                    'category': 'focus_management',
+                    'message': 'Modal component missing ESC key handler',
+                    'line': 0,
+                    'fix': "Add window.addEventListener('keyup', handler) to close on Escape"
+                })
+
+            # Check for focus trap pattern
+            has_focus_trap = any(pattern in content for pattern in [
+                'focusable', 'tabbable', '.focus()', 'tabindex',
+                'querySelectorAll', 'firstElementChild'
+            ])
+
+            if not has_focus_trap:
+                scores['focus_management'] = max(0, scores['focus_management'] - 3)
+                issues.append({
+                    'severity': 'INFO',
+                    'category': 'focus_management',
+                    'message': 'Modal may need focus trap for accessibility',
+                    'line': 0,
+                    'fix': 'Implement focus trap to keep focus within modal'
+                })
+
+            # Check for cleanup in disconnectedCallback
+            if 'addEventListener' in content:
+                if 'removeEventListener' not in content and 'disconnectedCallback' not in content:
+                    scores['focus_management'] = max(0, scores['focus_management'] - 4)
+                    issues.append({
+                        'severity': 'HIGH',
+                        'category': 'focus_management',
+                        'message': 'Event listener added but not cleaned up',
+                        'line': 0,
+                        'fix': 'Add disconnectedCallback to remove event listeners'
+                    })
 
 
 if __name__ == "__main__":

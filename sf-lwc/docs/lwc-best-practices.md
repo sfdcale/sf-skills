@@ -1,8 +1,30 @@
 # Lightning Web Components Best Practices
 
+This guide provides comprehensive best practices for building production-ready LWC components, organized around the **PICKLES Framework** and incorporating advanced patterns from industry experts.
+
+---
+
+## PICKLES Framework Overview
+
+The PICKLES Framework provides a structured approach to LWC architecture. Use it as a checklist during component design and implementation.
+
+```
+🥒 P - Prototype    → Validate ideas with wireframes & mock data
+🥒 I - Integrate    → Choose data source (LDS, Apex, GraphQL)
+🥒 C - Composition  → Structure component hierarchy & communication
+🥒 K - Kinetics     → Handle user interactions & event flow
+🥒 L - Libraries    → Leverage platform APIs & base components
+🥒 E - Execution    → Optimize performance & lifecycle hooks
+🥒 S - Security     → Enforce permissions & data protection
+```
+
+**Reference**: [PICKLES Framework (Salesforce Ben)](https://www.salesforceben.com/the-ideal-framework-for-architecting-salesforce-lightning-web-components/)
+
+---
+
 ## Component Design Principles
 
-### 1. Single Responsibility
+### Single Responsibility (PICKLES: Composition)
 
 Each component should do one thing well.
 
@@ -11,7 +33,7 @@ Each component should do one thing well.
 ❌ BAD: accountManager (does display, list, and form in one)
 ```
 
-### 2. Composition Over Inheritance
+### Composition Over Inheritance
 
 Build complex UIs by composing simple components.
 
@@ -25,7 +47,7 @@ Build complex UIs by composing simple components.
 </template>
 ```
 
-### 3. Unidirectional Data Flow
+### Unidirectional Data Flow
 
 Data flows down (props), events bubble up.
 
@@ -55,16 +77,27 @@ Data flows down (props), events bubble up.
 
 ---
 
-## Data Handling
+## Data Integration (PICKLES: Integrate)
 
-### Wire vs Imperative Apex
+### Data Source Decision Tree
 
-| Scenario | Use |
-|----------|-----|
-| Display data (read-only) | `@wire` with `cacheable=true` |
-| Create/Update/Delete | Imperative call |
-| Conditional fetching | Imperative call |
-| Need to control timing | Imperative call |
+| Scenario | Recommended Approach |
+|----------|---------------------|
+| Single record by ID | Lightning Data Service (`getRecord`) |
+| Simple record CRUD | `lightning-record-form` / `lightning-record-edit-form` |
+| Complex queries | Apex with `@AuraEnabled(cacheable=true)` |
+| Related records, filtering | GraphQL wire adapter |
+| Real-time updates | Platform Events / Streaming API |
+| External data | Named Credentials + Apex callout |
+
+### GraphQL vs Apex Decision
+
+| Use GraphQL When | Use Apex When |
+|------------------|---------------|
+| Fetching related objects | Complex business logic |
+| Client-side filtering | Aggregate queries (COUNT, SUM) |
+| Cursor-based pagination | Bulk DML operations |
+| Reducing over-fetching | Callouts to external systems |
 
 ### Wire Service Best Practices
 
@@ -80,7 +113,7 @@ wiredAccounts(result) {
         this.accounts = data;
         this.error = undefined;
     } else if (error) {
-        this.error = error;
+        this.error = this.reduceErrors(error);
         this.accounts = [];
     }
 }
@@ -104,23 +137,22 @@ reduceErrors(errors) {
         .filter(error => !!error)
         .map(error => {
             // UI API errors
-            if (error.body && typeof error.body.message === 'string') {
-                return error.body.message;
-            }
+            if (error.body?.message) return error.body.message;
             // JS errors
-            if (typeof error.message === 'string') {
-                return error.message;
+            if (error.message) return error.message;
+            // GraphQL errors
+            if (error.graphQLErrors) {
+                return error.graphQLErrors.map(e => e.message).join(', ');
             }
-            // Unknown format
             return JSON.stringify(error);
         })
-        .join(', ');
+        .join('; ');
 }
 ```
 
 ---
 
-## Event Patterns
+## Event Patterns (PICKLES: Kinetics)
 
 ### Custom Events
 
@@ -159,20 +191,7 @@ onerror                    onErrorOccurred
 | LWC to Aura communication | LMS |
 | LWC to Visualforce | LMS |
 
----
-
-## Performance Optimization
-
-### 1. Lazy Loading
-
-```html
-<!-- Only render when needed -->
-<template if:true={showDetails}>
-    <c-expensive-component record-id={recordId}></c-expensive-component>
-</template>
-```
-
-### 2. Debouncing
+### Debouncing Pattern
 
 ```javascript
 delayTimeout;
@@ -187,7 +206,29 @@ handleSearch(event) {
 }
 ```
 
-### 3. Efficient Rendering
+---
+
+## Performance Optimization (PICKLES: Execution)
+
+### Lifecycle Hook Guidance
+
+| Hook | When to Use | Avoid |
+|------|-------------|-------|
+| `constructor()` | Initialize properties | DOM access (not ready) |
+| `connectedCallback()` | Subscribe to events, fetch data | Heavy processing |
+| `renderedCallback()` | DOM-dependent logic | Infinite loops, property changes |
+| `disconnectedCallback()` | Cleanup subscriptions/listeners | Async operations |
+
+### Lazy Loading
+
+```html
+<!-- Only render when needed -->
+<template lwc:if={showDetails}>
+    <c-expensive-component record-id={recordId}></c-expensive-component>
+</template>
+```
+
+### Efficient Rendering
 
 ```javascript
 // Bad: Creates new array every render
@@ -209,15 +250,105 @@ get filteredItems() {
 }
 ```
 
-### 4. Virtual Scrolling for Large Lists
+### Virtual Scrolling
 
 Use `lightning-datatable` with `enable-infinite-loading` for large datasets instead of rendering all items.
 
 ---
 
-## Security Best Practices
+## Advanced Jest Testing Patterns
 
-### 1. FLS Enforcement
+Based on [James Simone's advanced testing patterns](https://www.jamessimone.net/blog/joys-of-apex/advanced-lwc-jest-testing/).
+
+### Render Cycle Helper
+
+LWC re-rendering is asynchronous. Use this helper to document and await render cycles:
+
+```javascript
+// testUtils.js
+export const runRenderingLifecycle = async (reasons = ['render']) => {
+    while (reasons.length > 0) {
+        await Promise.resolve(reasons.pop());
+    }
+};
+
+// Usage in tests
+it('updates after property change', async () => {
+    const element = createElement('c-example', { is: Example });
+    document.body.appendChild(element);
+
+    element.greeting = 'new value';
+    await runRenderingLifecycle(['property change', 'render']);
+
+    expect(element.shadowRoot.querySelector('div').textContent).toBe('new value');
+});
+```
+
+### Proxy Unboxing (Lightning Web Security)
+
+Lightning Web Security proxifies objects. Unbox them for assertions:
+
+```javascript
+// LWS proxifies complex objects - unbox for comparison
+const unboxedData = JSON.parse(JSON.stringify(component.data));
+expect(unboxedData).toEqual(expectedData);
+```
+
+### DOM Cleanup Pattern
+
+Clean up after each test to prevent state bleed:
+
+```javascript
+describe('c-my-component', () => {
+    afterEach(() => {
+        // Clean up DOM
+        while (document.body.firstChild) {
+            document.body.removeChild(document.body.firstChild);
+        }
+        jest.clearAllMocks();
+    });
+});
+```
+
+### ResizeObserver Polyfill
+
+Some components use ResizeObserver. Add polyfill in jest.setup.js:
+
+```javascript
+// jest.setup.js
+if (!window.ResizeObserver) {
+    window.ResizeObserver = class ResizeObserver {
+        constructor(callback) {
+            this.callback = callback;
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+    };
+}
+```
+
+### Mocking Apex Methods
+
+```javascript
+jest.mock('@salesforce/apex/MyController.getData', () => ({
+    default: jest.fn()
+}), { virtual: true });
+
+// In test
+import getData from '@salesforce/apex/MyController.getData';
+
+it('displays data', async () => {
+    getData.mockResolvedValue(MOCK_DATA);
+    // ... test code
+});
+```
+
+---
+
+## Security Best Practices (PICKLES: Security)
+
+### FLS Enforcement
 
 ```apex
 // Always use SECURITY_ENFORCED or stripInaccessible
@@ -226,7 +357,7 @@ public static List<Account> getAccounts() {
     return [SELECT Id, Name FROM Account WITH SECURITY_ENFORCED];
 }
 
-// Or use stripInaccessible for DML
+// For DML operations
 SObjectAccessDecision decision = Security.stripInaccessible(
     AccessType.CREATABLE,
     records
@@ -234,25 +365,20 @@ SObjectAccessDecision decision = Security.stripInaccessible(
 insert decision.getRecords();
 ```
 
-### 2. Input Sanitization
+### Input Sanitization
 
-```javascript
-// Escape user input before using in queries
-handleSearch(event) {
-    // Don't pass directly to Apex
-    const userInput = event.target.value;
-    // Apex should escape: String.escapeSingleQuotes(searchTerm)
-}
+```apex
+// Apex should escape user input
+String searchKey = '%' + String.escapeSingleQuotes(searchTerm) + '%';
 ```
 
-### 3. Avoid XSS
+### XSS Prevention
+
+LWC automatically escapes content in templates. Never bypass this.
 
 ```html
 <!-- Safe: LWC auto-escapes -->
 <p>{userInput}</p>
-
-<!-- Dangerous: Never use innerHTML with user data -->
-<!-- LWC doesn't support innerHTML anyway -->
 ```
 
 ---
@@ -275,7 +401,7 @@ handleSearch(event) {
 handleKeyDown(event) {
     switch (event.key) {
         case 'Enter':
-        case ' ':  // Space
+        case ' ':
             this.handleSelect(event);
             break;
         case 'Escape':
@@ -285,22 +411,80 @@ handleKeyDown(event) {
             this.focusNext();
             event.preventDefault();
             break;
-        case 'ArrowUp':
-            this.focusPrevious();
-            event.preventDefault();
-            break;
     }
 }
 ```
 
-### Screen Reader Announcements
+### Focus Trap Pattern (for Modals)
 
-```html
-<!-- Announce changes to screen readers -->
-<div aria-live="polite" class="slds-assistive-text">
-    {statusMessage}
-</div>
+Based on [James Simone's modal pattern](https://www.jamessimone.net/blog/joys-of-apex/lwc-composable-modal/):
+
+```javascript
+_focusableElements = [];
+
+_onOpen() {
+    // Collect focusable elements
+    this._focusableElements = [
+        ...this.querySelectorAll('.focusable'),
+        ...this.template.querySelectorAll('lightning-button, button, [tabindex="0"]')
+    ].filter(el => !el.disabled);
+
+    // Focus first element
+    this._focusableElements[0]?.focus();
+
+    // Add ESC handler
+    window.addEventListener('keyup', this._handleKeyUp);
+}
+
+_handleKeyUp = (event) => {
+    if (event.code === 'Escape') {
+        this.close();
+    }
+}
+
+disconnectedCallback() {
+    window.removeEventListener('keyup', this._handleKeyUp);
+}
 ```
+
+---
+
+## SLDS 2 & Dark Mode
+
+### Dark Mode Checklist
+
+- [ ] No hardcoded hex colors (`#FFFFFF`, `#333333`)
+- [ ] No hardcoded RGB/RGBA values
+- [ ] All colors use CSS variables (`var(--slds-g-color-*)`)
+- [ ] Fallback values provided for SLDS 1 compatibility
+- [ ] Icons use SLDS utility icons (auto-adjust for dark mode)
+
+### SLDS 1 → SLDS 2 Migration
+
+```css
+/* BEFORE (SLDS 1 - Deprecated) */
+.my-card {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+/* AFTER (SLDS 2 - Dark Mode Ready) */
+.my-card {
+    background-color: var(--slds-g-color-surface-container-1, #ffffff);
+    color: var(--slds-g-color-on-surface, #181818);
+}
+```
+
+### Key Global Styling Hooks
+
+| Category | SLDS 2 Variable |
+|----------|-----------------|
+| Surface | `--slds-g-color-surface-1` to `-4` |
+| Text | `--slds-g-color-on-surface` |
+| Border | `--slds-g-color-border-1`, `-2` |
+| Spacing | `--slds-g-spacing-0` to `-12` |
+
+**Important**: `--slds-c-*` (component-level hooks) are NOT supported in SLDS 2 yet.
 
 ---
 
@@ -321,6 +505,7 @@ handleKeyDown(event) {
 - [ ] Works in Lightning Experience
 - [ ] Works in Salesforce Mobile
 - [ ] Works in Experience Cloud (if targeted)
+- [ ] Works in Dark Mode (SLDS 2)
 - [ ] Keyboard navigation works
 - [ ] Screen reader announces properly
 - [ ] No console errors
@@ -333,13 +518,13 @@ handleKeyDown(event) {
 ### 1. Modifying @api Properties
 
 ```javascript
-// ❌ BAD: Don't modify @api properties directly
+// ❌ BAD
 @api items;
 handleClick() {
     this.items.push(newItem);  // Mutation!
 }
 
-// ✅ GOOD: Create new array
+// ✅ GOOD
 handleClick() {
     this.items = [...this.items, newItem];
 }
@@ -353,7 +538,7 @@ connectedCallback() {
     this.subscription = subscribe(...);
 }
 
-// ✅ GOOD: Clean up in disconnectedCallback
+// ✅ GOOD
 disconnectedCallback() {
     unsubscribe(this.subscription);
 }
@@ -362,56 +547,22 @@ disconnectedCallback() {
 ### 3. Wire with Non-Reactive Parameters
 
 ```javascript
-// ❌ BAD: Variable not reactive
+// ❌ BAD
 let recordId = '001xxx';
-@wire(getRecord, { recordId: recordId })  // Won't update
+@wire(getRecord, { recordId: recordId })
 
-// ✅ GOOD: Use class property with $
+// ✅ GOOD
 @api recordId;
-@wire(getRecord, { recordId: '$recordId' })  // Reactive
-```
-
-### 4. Async in Getters
-
-```javascript
-// ❌ BAD: Getters should be synchronous
-get data() {
-    return await fetchData();  // Error!
-}
-
-// ✅ GOOD: Use wire or imperative with state
-data;
-async connectedCallback() {
-    this.data = await fetchData();
-}
-```
-
----
-
-## CLI Commands Quick Reference
-
-```bash
-# Create new component
-sf lightning generate component --name myComponent --type lwc
-
-# Run Jest tests
-sf lightning lwc test run
-
-# Run specific test
-sf lightning lwc test run --spec path/to/test.js
-
-# Watch mode
-sf lightning lwc test run --watch
-
-# Deploy
-sf project deploy start --source-dir force-app/main/default/lwc/myComponent
+@wire(getRecord, { recordId: '$recordId' })
 ```
 
 ---
 
 ## Resources
 
-- [LWC Developer Guide](https://developer.salesforce.com/docs/component-library/documentation/en/lwc)
-- [Lightning Design System](https://www.lightningdesignsystem.com/)
-- [LWC Recipes](https://github.com/trailheadapps/lwc-recipes)
-- [LWC Jest Guide](https://developer.salesforce.com/docs/component-library/documentation/en/lwc/lwc.unit_testing_using_jest)
+- [PICKLES Framework (Salesforce Ben)](https://www.salesforceben.com/the-ideal-framework-for-architecting-salesforce-lightning-web-components/)
+- [LWC Recipes (GitHub)](https://github.com/trailheadapps/lwc-recipes)
+- [SLDS 2 Transition Guide](https://www.lightningdesignsystem.com/2e1ef8501/p/8184ad-transition-to-slds-2)
+- [James Simone - Advanced Jest Testing](https://www.jamessimone.net/blog/joys-of-apex/advanced-lwc-jest-testing/)
+- [James Simone - Composable Modal](https://www.jamessimone.net/blog/joys-of-apex/lwc-composable-modal/)
+- [SLDS Styling Hooks](https://developer.salesforce.com/docs/platform/lwc/guide/create-components-css-custom-properties.html)

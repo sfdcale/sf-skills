@@ -1,321 +1,255 @@
 ---
 name: sf-lwc
 description: >
-  Lightning Web Components development skill with component scaffolding, wire service
-  patterns, event handling, Apex integration, and Jest test generation. Build modern
-  Salesforce UIs with proper reactivity, accessibility, and performance patterns.
+  Lightning Web Components development skill with PICKLES architecture methodology,
+  component scaffolding, wire service patterns, event handling, Apex integration,
+  GraphQL support, and Jest test generation. Build modern Salesforce UIs with
+  proper reactivity, accessibility, dark mode compatibility, and performance patterns.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "2.0.0"
   author: "Jag Valaiyapathy"
-  scoring: "140 points across 7 categories (SLDS 2 compliant)"
+  scoring: "165 points across 8 categories (SLDS 2 + Dark Mode compliant)"
 ---
 
 # sf-lwc: Lightning Web Components Development
 
-Expert frontend engineer specializing in Lightning Web Components for Salesforce. Generate production-ready LWC components with proper data binding, Apex integration, event handling, and comprehensive Jest tests.
+Expert frontend engineer specializing in Lightning Web Components for Salesforce. Generate production-ready LWC components using the **PICKLES Framework** for architecture, with proper data binding, Apex/GraphQL integration, event handling, SLDS 2 styling, and comprehensive Jest tests.
 
 ## Core Responsibilities
 
 1. **Component Scaffolding**: Generate complete LWC bundles (JS, HTML, CSS, meta.xml)
-2. **Wire Service Patterns**: Implement @wire decorators for data fetching
-3. **Apex Integration**: Connect LWC to Apex controllers with @AuraEnabled methods
-4. **Event Handling**: Implement component communication (CustomEvent, LMS, pubsub)
-5. **Lifecycle Management**: Proper use of connectedCallback, renderedCallback, etc.
-6. **Jest Testing**: Generate comprehensive unit tests for components
-7. **Accessibility**: Ensure WCAG compliance with proper ARIA attributes
-8. **Performance**: Implement lazy loading, virtual scrolling, efficient rendering
+2. **PICKLES Architecture**: Apply structured design methodology for robust components
+3. **Wire Service Patterns**: Implement @wire decorators for data fetching (Apex & GraphQL)
+4. **Apex/GraphQL Integration**: Connect LWC to backend with @AuraEnabled and GraphQL
+5. **Event Handling**: Component communication (CustomEvent, LMS, pubsub)
+6. **Lifecycle Management**: Proper use of connectedCallback, renderedCallback, etc.
+7. **Jest Testing**: Generate comprehensive unit tests with advanced patterns
+8. **Accessibility**: WCAG compliance with ARIA attributes, focus management
+9. **Dark Mode**: SLDS 2 compliant styling with global styling hooks
+10. **Performance**: Lazy loading, virtual scrolling, debouncing, efficient rendering
 
-## Workflow (5-Phase Pattern)
+---
 
-### Phase 1: Requirements Gathering
+## PICKLES Framework (Architecture Methodology)
 
-Use **AskUserQuestion** to gather:
-- Component purpose (data display, form, navigation, etc.)
-- Data source (Apex, wire adapters, static, external)
-- Parent/child relationships
-- Event communication needs
-- Accessibility requirements
+The **PICKLES Framework** provides a structured approach to designing robust Lightning Web Components. Apply each principle during component design and implementation.
 
-**Then**:
-1. Analyze existing components in the project
-2. Identify reusable patterns
-3. Create TodoWrite tasks
-
-### Phase 2: Component Design
-
-**Component Structure Decision Tree**:
-
-| Requirement | Component Type | Pattern |
-|-------------|----------------|---------|
-| Display record data | Data component | @wire with getRecord |
-| Edit record | Form component | lightning-record-edit-form |
-| Custom UI | Custom component | @wire with Apex |
-| List with actions | Datatable | lightning-datatable |
-| Navigation | Navigation component | NavigationMixin |
-| Modal/Overlay | Modal component | lightning-modal |
-
-**File Structure**:
 ```
-myComponent/
-├── myComponent.js           // Component logic
-├── myComponent.html         // Template
-├── myComponent.css          // Styles (optional)
-├── myComponent.js-meta.xml  // Metadata configuration
-└── __tests__/
-    └── myComponent.test.js  // Jest tests
+┌─────────────────────────────────────────────────────────────────────┐
+│                     🥒 PICKLES FRAMEWORK                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  P → Prototype    │  Validate ideas with wireframes & mock data    │
+│  I → Integrate    │  Choose data source (LDS, Apex, GraphQL, API)  │
+│  C → Composition  │  Structure component hierarchy & communication │
+│  K → Kinetics     │  Handle user interactions & event flow         │
+│  L → Libraries    │  Leverage platform APIs & base components      │
+│  E → Execution    │  Optimize performance & lifecycle hooks        │
+│  S → Security     │  Enforce permissions, FLS, and data protection │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 3: Implementation
+### P - Prototype
 
-**Core LWC Patterns**:
+**Purpose**: Validate ideas early before full implementation.
+
+| Action | Description |
+|--------|-------------|
+| Wireframe | Create high-level component sketches |
+| Mock Data | Use sample data to test functionality |
+| Stakeholder Review | Gather feedback before development |
+| Separation of Concerns | Break into smaller functional pieces |
 
 ```javascript
-// Basic component with reactive properties
-import { LightningElement, api, wire, track } from 'lwc';
-import getAccounts from '@salesforce/apex/AccountController.getAccounts';
+// Mock data pattern for prototyping
+const MOCK_ACCOUNTS = [
+    { Id: '001MOCK001', Name: 'Acme Corp', Industry: 'Technology' },
+    { Id: '001MOCK002', Name: 'Global Inc', Industry: 'Finance' }
+];
 
-export default class AccountList extends LightningElement {
-    @api recordId;           // Public property from parent
-    @track accounts = [];    // Reactive array (track optional in newer versions)
-    error;
-    isLoading = true;
-
-    // Wire service for data fetching
-    @wire(getAccounts, { accountId: '$recordId' })
-    wiredAccounts({ error, data }) {
-        this.isLoading = false;
-        if (data) {
-            this.accounts = data;
-            this.error = undefined;
-        } else if (error) {
-            this.error = error;
-            this.accounts = [];
-        }
-    }
-
-    // Lifecycle hooks
-    connectedCallback() {
-        // Component inserted into DOM
-    }
-
-    renderedCallback() {
-        // DOM rendered (careful with infinite loops)
-    }
-
-    disconnectedCallback() {
-        // Component removed from DOM - cleanup here
-    }
-
-    // Event handler
-    handleClick(event) {
-        const accountId = event.target.dataset.id;
-        this.dispatchEvent(new CustomEvent('accountselected', {
-            detail: { accountId },
-            bubbles: true,
-            composed: true
-        }));
-    }
+export default class AccountPrototype extends LightningElement {
+    accounts = MOCK_ACCOUNTS; // Replace with wire/Apex later
 }
 ```
 
-### Phase 4: Testing
+### I - Integrate
 
-**Jest Test Pattern**:
+**Purpose**: Determine how components interact with data systems.
+
+**Data Source Decision Tree**:
+
+| Scenario | Recommended Approach |
+|----------|---------------------|
+| Single record by ID | Lightning Data Service (`getRecord`) |
+| Simple record CRUD | `lightning-record-form` / `lightning-record-edit-form` |
+| Complex queries | Apex with `@AuraEnabled(cacheable=true)` |
+| Related records | GraphQL wire adapter |
+| Real-time updates | Platform Events / Streaming API |
+| External data | Named Credentials + Apex callout |
+
+**Integration Checklist**:
+- [ ] Implement error handling with clear user notifications
+- [ ] Add loading spinners to prevent duplicate requests
+- [ ] Use LDS for single-object operations (minimizes DML)
+- [ ] Respect FLS and CRUD in Apex implementations
+- [ ] Store `wiredResult` for `refreshApex()` support
+
+### C - Composition
+
+**Purpose**: Structure how LWCs nest and communicate.
+
+**Communication Patterns**:
+
+| Pattern | Direction | Use Case |
+|---------|-----------|----------|
+| `@api` properties | Parent → Child | Pass data down |
+| Custom Events | Child → Parent | Bubble actions up |
+| Lightning Message Service | Any → Any | Cross-DOM communication |
+| Pub/Sub | Sibling → Sibling | Same page, no hierarchy |
+
+**Best Practices**:
+- Maintain shallow component hierarchies (max 3-4 levels)
+- Single responsibility per component
+- Clean up subscriptions in `disconnectedCallback()`
+- Use custom events purposefully, not for every interaction
 
 ```javascript
-import { createElement } from 'lwc';
-import AccountList from 'c/accountList';
-import getAccounts from '@salesforce/apex/AccountController.getAccounts';
-
-// Mock Apex method
-jest.mock('@salesforce/apex/AccountController.getAccounts', () => ({
-    default: jest.fn()
-}), { virtual: true });
-
-const MOCK_ACCOUNTS = [
-    { Id: '001xx000003DGFAAA4', Name: 'Test Account 1' },
-    { Id: '001xx000003DGFBBB4', Name: 'Test Account 2' }
-];
-
-describe('c-account-list', () => {
-    afterEach(() => {
-        while (document.body.firstChild) {
-            document.body.removeChild(document.body.firstChild);
-        }
-        jest.clearAllMocks();
-    });
-
-    it('displays accounts when data is returned', async () => {
-        getAccounts.mockResolvedValue(MOCK_ACCOUNTS);
-
-        const element = createElement('c-account-list', { is: AccountList });
-        document.body.appendChild(element);
-
-        // Wait for async operations
-        await Promise.resolve();
-
-        const items = element.shadowRoot.querySelectorAll('lightning-card');
-        expect(items.length).toBe(2);
-    });
-
-    it('displays error when fetch fails', async () => {
-        getAccounts.mockRejectedValue(new Error('Failed'));
-
-        const element = createElement('c-account-list', { is: AccountList });
-        document.body.appendChild(element);
-
-        await Promise.resolve();
-
-        const error = element.shadowRoot.querySelector('.error');
-        expect(error).not.toBeNull();
-    });
-});
+// Parent-managed composition pattern
+// parent.js
+handleChildEvent(event) {
+    this.selectedId = event.detail.id;
+    // Update child via @api
+    this.template.querySelector('c-child').selectedId = this.selectedId;
+}
 ```
 
-### Phase 5: Validation & Deployment
+### K - Kinetics
 
-1. **Run Jest tests**: `sf lightning lwc test run`
-2. **Lint check**: `sf lightning lint`
-3. **Deploy**: Use sf-deploy skill
-4. **Verify in org**: Test in browser
+**Purpose**: Manage user interaction and event responsiveness.
 
----
+**Key Patterns**:
 
-## SLDS 2 Validation (140-Point Scoring)
+| Pattern | Implementation |
+|---------|----------------|
+| Debounce | 300ms delay for search inputs |
+| Disable during submit | Prevent duplicate clicks |
+| Keyboard navigation | Enter/Space triggers actions |
+| Event bubbling | Control with `bubbles` and `composed` |
 
-The sf-lwc skill includes automated SLDS 2 (Salesforce Lightning Design System 2) validation that runs on every Write/Edit operation. This ensures your components are dark mode compatible, accessible, and use modern styling hooks.
+```javascript
+// Debounce pattern for search
+delayTimeout;
 
-| Category | Points | Key Checks |
-|----------|--------|------------|
-| **SLDS Class Usage** | 25 | Valid class names, proper `slds-*` utilities |
-| **Accessibility** | 25 | ARIA labels, roles, alt-text, keyboard navigation |
-| **Dark Mode** | 25 | No hardcoded colors, CSS variables only |
-| **SLDS Migration** | 20 | No deprecated SLDS 1 patterns/tokens |
-| **Styling Hooks** | 20 | Proper `--slds-g-*` variable usage |
-| **Component Structure** | 15 | Uses `lightning-*` base components |
-| **Performance** | 10 | Efficient selectors, no `!important` |
-
-**Scoring Thresholds**:
-```
-⭐⭐⭐⭐⭐ 125-140 pts → Production-ready, SLDS 2 compliant
-⭐⭐⭐⭐   110-124 pts → Good component, minor SLDS issues
-⭐⭐⭐     90-109 pts → Functional, needs SLDS cleanup
-⭐⭐       70-89 pts  → Basic functionality, SLDS issues
-⭐         <70 pts   → Needs significant SLDS work
+handleSearchChange(event) {
+    const searchTerm = event.target.value;
+    clearTimeout(this.delayTimeout);
+    this.delayTimeout = setTimeout(() => {
+        this.dispatchEvent(new CustomEvent('search', {
+            detail: { searchTerm }
+        }));
+    }, 300);
+}
 ```
 
-### Sample Validation Output
+### L - Libraries
 
+**Purpose**: Leverage Salesforce-provided and platform tools.
+
+**Recommended Platform Features**:
+
+| API/Module | Use Case |
+|------------|----------|
+| `lightning/navigation` | Page/record navigation |
+| `lightning/uiRecordApi` | LDS operations (getRecord, updateRecord) |
+| `lightning/platformShowToastEvent` | User notifications |
+| `lightning/modal` | Native modal dialogs |
+| Base Components | Pre-built UI (button, input, datatable) |
+| `lightning/refresh` | Dispatch refresh events |
+
+**Avoid reinventing** what base components already provide!
+
+### E - Execution
+
+**Purpose**: Optimize performance and resource efficiency.
+
+**Lifecycle Hook Guidance**:
+
+| Hook | When to Use | Avoid |
+|------|-------------|-------|
+| `constructor()` | Initialize properties | DOM access (not ready) |
+| `connectedCallback()` | Subscribe to events, fetch data | Heavy processing |
+| `renderedCallback()` | DOM-dependent logic | Infinite loops, property changes |
+| `disconnectedCallback()` | Cleanup subscriptions/listeners | Async operations |
+
+**Performance Checklist**:
+- [ ] Lazy load with `if:true` / `lwc:if`
+- [ ] Use `key` directive in iterations
+- [ ] Cache computed values in getters
+- [ ] Avoid property updates that trigger re-renders
+- [ ] Use browser DevTools Performance tab
+
+### S - Security
+
+**Purpose**: Enforce access control and data protection.
+
+**Security Checklist**:
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Field-Level Security | Use `WITH SECURITY_ENFORCED` in SOQL |
+| CRUD Permissions | Check before DML operations |
+| Custom Permissions | Conditionally render features |
+| Input Validation | Sanitize before processing |
+| Sensitive Data | Never expose in client-side code |
+
+```apex
+// Secure Apex pattern
+@AuraEnabled(cacheable=true)
+public static List<Account> getAccounts(String searchTerm) {
+    String searchKey = '%' + String.escapeSingleQuotes(searchTerm) + '%';
+    return [
+        SELECT Id, Name, Industry
+        FROM Account
+        WHERE Name LIKE :searchKey
+        WITH SECURITY_ENFORCED
+        LIMIT 50
+    ];
+}
 ```
-🎨 SLDS 2 Validation: myComponent.html
-════════════════════════════════════════════════════════════════
-📊 Score: 125/140 ⭐⭐⭐⭐ Good
-
-📋 Category Breakdown:
-   ✅ SLDS Class Usage: 25/25
-   ✅ Accessibility: 25/25
-   ⚠️ Dark Mode: 20/25 (-5)
-   ✅ SLDS Migration: 20/20
-   ⚠️ Styling Hooks: 15/20 (-5)
-   ✅ Component Structure: 15/15
-   ✅ Performance: 10/10
-
-⚠️ Issues Found (2):
-   🟠 L45 Hardcoded color #333333 - use --slds-g-color-on-surface
-   🟡 L78 Deprecated --lwc-colorBackground - use --slds-g-color-surface-1
-════════════════════════════════════════════════════════════════
-```
-
-### SLDS 2 Key Concepts
-
-**Dark Mode Compatibility (Critical)**:
-- Never use hardcoded hex colors (`#FFFFFF`, `#333333`)
-- Never use hardcoded RGB/RGBA values
-- Always use CSS variables: `var(--slds-g-color-surface-1)`
-
-**SLDS 1 → SLDS 2 Migration**:
-| SLDS 1 (Deprecated) | SLDS 2 (Use Instead) |
-|---------------------|----------------------|
-| `$color-background` | `--slds-g-color-surface-1` |
-| `--lwc-colorBackground` | `--slds-g-color-surface-1` |
-| `$spacing-medium` | `--slds-g-spacing-5` |
-| `--lwc-spacingMedium` | `--slds-g-spacing-5` |
-
-**Global Styling Hooks** (`--slds-g-*`):
-- **Surface colors**: `--slds-g-color-surface-1` to `-4`, `-container-1` to `-3`
-- **Text colors**: `--slds-g-color-on-surface`, `-on-surface-1`, `-on-surface-2`
-- **Border colors**: `--slds-g-color-border-1`, `-border-2`, `-border-brand-1`
-- **Spacing**: `--slds-g-spacing-0` to `--slds-g-spacing-12`
-- **Font sizes**: `--slds-g-font-size-1` to `--slds-g-font-size-10`
-- **Border radius**: `--slds-g-radius-border-1` to `-4`, `-circle`
-
-### Optional: SLDS Linter Integration
-
-For additional validation, install the official Salesforce SLDS Linter:
-
-```bash
-npm install -g @salesforce-ux/slds-linter
-```
-
-When installed, the validator will automatically use it for enhanced HTML template and CSS styling hooks validation. The custom Python validators still run regardless, providing comprehensive coverage.
-
----
-
-## Best Practices (Component Quality)
-
-Beyond SLDS validation, ensure your components follow these patterns:
-
-| Category | Key Rules |
-|----------|-----------|
-| **Component Structure** | Proper file organization, naming conventions |
-| **Data Handling** | Correct wire usage, error handling, loading states |
-| **Event Architecture** | Proper event bubbling, composed flags |
-| **Accessibility** | ARIA labels, keyboard navigation, screen reader |
-| **Performance** | Lazy loading, efficient rendering, no memory leaks |
-| **Test Coverage** | Jest tests for all scenarios |
 
 ---
 
 ## Component Patterns
 
-### 1. Basic Data Display Component
+### 1. Basic Data Display (Wire Service)
 
 ```javascript
 // accountCard.js
-import { LightningElement, api } from 'lwc';
+import { LightningElement, api, wire } from 'lwc';
+import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
+import NAME_FIELD from '@salesforce/schema/Account.Name';
+import INDUSTRY_FIELD from '@salesforce/schema/Account.Industry';
+
+const FIELDS = [NAME_FIELD, INDUSTRY_FIELD];
 
 export default class AccountCard extends LightningElement {
-    @api account;
+    @api recordId;
 
-    get formattedRevenue() {
-        return this.account?.AnnualRevenue
-            ? new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD'
-              }).format(this.account.AnnualRevenue)
-            : 'N/A';
+    @wire(getRecord, { recordId: '$recordId', fields: FIELDS })
+    account;
+
+    get name() {
+        return getFieldValue(this.account.data, NAME_FIELD);
+    }
+
+    get industry() {
+        return getFieldValue(this.account.data, INDUSTRY_FIELD);
+    }
+
+    get isLoading() {
+        return !this.account.data && !this.account.error;
     }
 }
-```
-
-```html
-<!-- accountCard.html -->
-<template>
-    <lightning-card title={account.Name} icon-name="standard:account">
-        <div class="slds-p-horizontal_small">
-            <p><strong>Industry:</strong> {account.Industry}</p>
-            <p><strong>Revenue:</strong> {formattedRevenue}</p>
-        </div>
-        <div slot="footer">
-            <lightning-button
-                label="View Details"
-                onclick={handleViewDetails}
-                data-id={account.Id}>
-            </lightning-button>
-        </div>
-    </lightning-card>
-</template>
 ```
 
 ### 2. Wire Service with Apex
@@ -328,13 +262,11 @@ import { refreshApex } from '@salesforce/apex';
 
 export default class ContactList extends LightningElement {
     @api recordId;
-    contacts;
-    error;
     wiredContactsResult;
 
     @wire(getContacts, { accountId: '$recordId' })
     wiredContacts(result) {
-        this.wiredContactsResult = result;
+        this.wiredContactsResult = result; // Store for refreshApex
         const { error, data } = result;
         if (data) {
             this.contacts = data;
@@ -351,49 +283,364 @@ export default class ContactList extends LightningElement {
 }
 ```
 
-### 3. Imperative Apex Call
+### 3. GraphQL Wire Pattern (NEW)
 
 ```javascript
-// orderCreator.js
-import { LightningElement, api } from 'lwc';
-import createOrder from '@salesforce/apex/OrderController.createOrder';
-import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+// graphqlContacts.js
+import { LightningElement, wire } from 'lwc';
+import { gql, graphql } from 'lightning/uiGraphQLApi';
 
-export default class OrderCreator extends LightningElement {
-    @api accountId;
-    isLoading = false;
+const CONTACTS_QUERY = gql`
+    query ContactsQuery($first: Int, $after: String) {
+        uiapi {
+            query {
+                Contact(first: $first, after: $after) {
+                    edges {
+                        node {
+                            Id
+                            Name { value }
+                            Email { value }
+                            Account {
+                                Name { value }
+                            }
+                        }
+                        cursor
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
+                }
+            }
+        }
+    }
+`;
 
-    async handleCreateOrder() {
-        this.isLoading = true;
-        try {
-            const result = await createOrder({
-                accountId: this.accountId,
-                items: this.selectedItems
-            });
+export default class GraphqlContacts extends LightningElement {
+    contacts;
+    pageInfo;
+    error;
 
-            this.dispatchEvent(new ShowToastEvent({
-                title: 'Success',
-                message: `Order ${result.OrderNumber} created`,
-                variant: 'success'
+    @wire(graphql, {
+        query: CONTACTS_QUERY,
+        variables: '$queryVariables'
+    })
+    wiredContacts({ data, error }) {
+        if (data) {
+            const result = data.uiapi.query.Contact;
+            this.contacts = result.edges.map(edge => ({
+                id: edge.node.Id,
+                name: edge.node.Name.value,
+                email: edge.node.Email?.value,
+                accountName: edge.node.Account?.Name?.value
             }));
+            this.pageInfo = result.pageInfo;
+        } else if (error) {
+            this.error = error;
+        }
+    }
 
-            this.dispatchEvent(new CustomEvent('ordercreated', {
-                detail: { orderId: result.Id }
-            }));
-        } catch (error) {
-            this.dispatchEvent(new ShowToastEvent({
-                title: 'Error',
-                message: error.body?.message || 'Unknown error',
-                variant: 'error'
-            }));
-        } finally {
-            this.isLoading = false;
+    get queryVariables() {
+        return { first: 10, after: this._cursor };
+    }
+
+    loadMore() {
+        if (this.pageInfo?.hasNextPage) {
+            this._cursor = this.pageInfo.endCursor;
         }
     }
 }
 ```
 
-### 4. Parent-Child Communication
+### 4. Modal Component Pattern (Composable)
+
+Based on [James Simone's composable modal pattern](https://www.jamessimone.net/blog/joys-of-apex/lwc-composable-modal/).
+
+```javascript
+// composableModal.js
+import { LightningElement, api } from 'lwc';
+
+const OUTER_MODAL_CLASS = 'outerModalContent';
+
+export default class ComposableModal extends LightningElement {
+    @api modalHeader;
+    @api modalTagline;
+    @api modalSaveHandler;
+
+    _isOpen = false;
+    _focusableElements = [];
+
+    @api
+    toggleModal() {
+        this._isOpen = !this._isOpen;
+        if (this._isOpen) {
+            this._focusableElements = [...this.querySelectorAll('.focusable')];
+            this._focusFirstElement();
+            window.addEventListener('keyup', this._handleKeyUp);
+        } else {
+            window.removeEventListener('keyup', this._handleKeyUp);
+        }
+    }
+
+    get modalAriaHidden() {
+        return !this._isOpen;
+    }
+
+    get modalClass() {
+        return this._isOpen
+            ? 'slds-modal slds-visible slds-fade-in-open'
+            : 'slds-modal slds-hidden';
+    }
+
+    get backdropClass() {
+        return this._isOpen ? 'slds-backdrop slds-backdrop_open' : 'slds-backdrop';
+    }
+
+    _handleKeyUp = (event) => {
+        if (event.code === 'Escape') {
+            this.toggleModal();
+        } else if (event.code === 'Tab') {
+            this._handleTabNavigation(event);
+        }
+    }
+
+    _handleTabNavigation(event) {
+        // Focus trap logic - keep focus within modal
+        const activeEl = this.template.activeElement;
+        const lastIndex = this._focusableElements.length - 1;
+        const currentIndex = this._focusableElements.indexOf(activeEl);
+
+        if (event.shiftKey && currentIndex === 0) {
+            this._focusableElements[lastIndex]?.focus();
+        } else if (!event.shiftKey && currentIndex === lastIndex) {
+            this._focusFirstElement();
+        }
+    }
+
+    _focusFirstElement() {
+        if (this._focusableElements.length > 0) {
+            this._focusableElements[0].focus();
+        }
+    }
+
+    handleBackdropClick(event) {
+        if (event.target.classList.contains(OUTER_MODAL_CLASS)) {
+            this.toggleModal();
+        }
+    }
+
+    handleSave() {
+        if (this.modalSaveHandler) {
+            this.modalSaveHandler();
+        }
+        this.toggleModal();
+    }
+
+    disconnectedCallback() {
+        window.removeEventListener('keyup', this._handleKeyUp);
+    }
+}
+```
+
+```html
+<!-- composableModal.html -->
+<template>
+    <!-- Backdrop -->
+    <div class={backdropClass}></div>
+
+    <!-- Modal -->
+    <div class={modalClass}
+         role="dialog"
+         aria-modal="true"
+         aria-hidden={modalAriaHidden}
+         aria-labelledby="modal-heading">
+
+        <div class="slds-modal__container outerModalContent"
+             onclick={handleBackdropClick}>
+
+            <div class="slds-modal__content slds-p-around_medium">
+                <!-- Header -->
+                <template lwc:if={modalHeader}>
+                    <h2 id="modal-heading" class="slds-text-heading_medium">
+                        {modalHeader}
+                    </h2>
+                </template>
+                <template lwc:if={modalTagline}>
+                    <p class="slds-m-top_x-small slds-text-color_weak">
+                        {modalTagline}
+                    </p>
+                </template>
+
+                <!-- Slotted Content -->
+                <div class="slds-m-top_medium">
+                    <slot name="modalContent"></slot>
+                </div>
+
+                <!-- Footer -->
+                <div class="slds-m-top_medium slds-text-align_right">
+                    <lightning-button
+                        label="Cancel"
+                        onclick={toggleModal}
+                        class="slds-m-right_x-small focusable">
+                    </lightning-button>
+                    <lightning-button
+                        variant="brand"
+                        label="Save"
+                        onclick={handleSave}
+                        class="focusable">
+                    </lightning-button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden background content -->
+    <div aria-hidden={_isOpen}>
+        <slot name="body"></slot>
+    </div>
+</template>
+```
+
+### 5. Record Picker Pattern (NEW)
+
+```javascript
+// recordPicker.js
+import { LightningElement, api } from 'lwc';
+
+export default class RecordPicker extends LightningElement {
+    @api label = 'Select Record';
+    @api objectApiName = 'Account';
+    @api placeholder = 'Search...';
+    @api required = false;
+    @api multiSelect = false;
+
+    _selectedIds = [];
+
+    @api
+    get value() {
+        return this.multiSelect ? this._selectedIds : this._selectedIds[0];
+    }
+
+    set value(val) {
+        this._selectedIds = Array.isArray(val) ? val : val ? [val] : [];
+    }
+
+    handleChange(event) {
+        const recordId = event.detail.recordId;
+        if (this.multiSelect) {
+            if (!this._selectedIds.includes(recordId)) {
+                this._selectedIds = [...this._selectedIds, recordId];
+            }
+        } else {
+            this._selectedIds = recordId ? [recordId] : [];
+        }
+
+        this.dispatchEvent(new CustomEvent('select', {
+            detail: {
+                recordId: this.value,
+                recordIds: this._selectedIds
+            }
+        }));
+    }
+
+    handleRemove(event) {
+        const idToRemove = event.target.dataset.id;
+        this._selectedIds = this._selectedIds.filter(id => id !== idToRemove);
+        this.dispatchEvent(new CustomEvent('select', {
+            detail: { recordIds: this._selectedIds }
+        }));
+    }
+}
+```
+
+```html
+<!-- recordPicker.html -->
+<template>
+    <lightning-record-picker
+        label={label}
+        placeholder={placeholder}
+        object-api-name={objectApiName}
+        onchange={handleChange}
+        required={required}>
+    </lightning-record-picker>
+
+    <template lwc:if={multiSelect}>
+        <div class="slds-m-top_x-small">
+            <template for:each={_selectedIds} for:item="id">
+                <lightning-pill
+                    key={id}
+                    label={id}
+                    data-id={id}
+                    onremove={handleRemove}>
+                </lightning-pill>
+            </template>
+        </div>
+    </template>
+</template>
+```
+
+### 6. Workspace API Pattern (Console Apps)
+
+```javascript
+// workspaceTabManager.js
+import { LightningElement, wire } from 'lwc';
+import { IsConsoleNavigation, getFocusedTabInfo, openTab, closeTab,
+         setTabLabel, setTabIcon, refreshTab } from 'lightning/platformWorkspaceApi';
+
+export default class WorkspaceTabManager extends LightningElement {
+    @wire(IsConsoleNavigation) isConsole;
+
+    async openRecordTab(recordId, objectApiName) {
+        if (!this.isConsole) return;
+
+        await openTab({
+            recordId,
+            focus: true,
+            icon: `standard:${objectApiName.toLowerCase()}`,
+            label: 'Loading...'
+        });
+    }
+
+    async openSubtab(parentTabId, recordId) {
+        if (!this.isConsole) return;
+
+        await openTab({
+            parentTabId,
+            recordId,
+            focus: true
+        });
+    }
+
+    async getCurrentTabInfo() {
+        if (!this.isConsole) return null;
+        return await getFocusedTabInfo();
+    }
+
+    async updateTabLabel(tabId, label) {
+        if (!this.isConsole) return;
+        await setTabLabel(tabId, label);
+    }
+
+    async updateTabIcon(tabId, iconName) {
+        if (!this.isConsole) return;
+        await setTabIcon(tabId, iconName);
+    }
+
+    async refreshCurrentTab() {
+        if (!this.isConsole) return;
+        const tabInfo = await getFocusedTabInfo();
+        await refreshTab(tabInfo.tabId);
+    }
+
+    async closeCurrentTab() {
+        if (!this.isConsole) return;
+        const tabInfo = await getFocusedTabInfo();
+        await closeTab(tabInfo.tabId);
+    }
+}
+```
+
+### 7. Parent-Child Communication
 
 ```javascript
 // parent.js
@@ -412,13 +659,13 @@ export default class Parent extends LightningElement {
 <!-- parent.html -->
 <template>
     <c-account-list onaccountselected={handleAccountSelected}></c-account-list>
-    <template if:true={selectedAccountId}>
+    <template lwc:if={selectedAccountId}>
         <c-account-detail account-id={selectedAccountId}></c-account-detail>
     </template>
 </template>
 ```
 
-### 5. Lightning Message Service (Cross-DOM)
+### 8. Lightning Message Service (Cross-DOM)
 
 ```javascript
 // publisher.js
@@ -427,8 +674,7 @@ import { publish, MessageContext } from 'lightning/messageService';
 import ACCOUNT_SELECTED_CHANNEL from '@salesforce/messageChannel/AccountSelected__c';
 
 export default class Publisher extends LightningElement {
-    @wire(MessageContext)
-    messageContext;
+    @wire(MessageContext) messageContext;
 
     handleSelect(event) {
         const payload = { accountId: event.target.dataset.id };
@@ -440,35 +686,36 @@ export default class Publisher extends LightningElement {
 ```javascript
 // subscriber.js
 import { LightningElement, wire } from 'lwc';
-import { subscribe, unsubscribe, MessageContext } from 'lightning/messageService';
+import { subscribe, unsubscribe, MessageContext,
+         APPLICATION_SCOPE } from 'lightning/messageService';
 import ACCOUNT_SELECTED_CHANNEL from '@salesforce/messageChannel/AccountSelected__c';
 
 export default class Subscriber extends LightningElement {
     subscription = null;
     accountId;
 
-    @wire(MessageContext)
-    messageContext;
+    @wire(MessageContext) messageContext;
 
     connectedCallback() {
-        this.subscribeToMessageChannel();
+        this.subscribeToChannel();
     }
 
     disconnectedCallback() {
-        this.unsubscribeToMessageChannel();
+        this.unsubscribeFromChannel();
     }
 
-    subscribeToMessageChannel() {
+    subscribeToChannel() {
         if (!this.subscription) {
             this.subscription = subscribe(
                 this.messageContext,
                 ACCOUNT_SELECTED_CHANNEL,
-                (message) => this.handleMessage(message)
+                (message) => this.handleMessage(message),
+                { scope: APPLICATION_SCOPE }
             );
         }
     }
 
-    unsubscribeToMessageChannel() {
+    unsubscribeFromChannel() {
         unsubscribe(this.subscription);
         this.subscription = null;
     }
@@ -479,7 +726,7 @@ export default class Subscriber extends LightningElement {
 }
 ```
 
-### 6. Navigation
+### 9. Navigation
 
 ```javascript
 // navigator.js
@@ -488,35 +735,39 @@ import { NavigationMixin } from 'lightning/navigation';
 
 export default class Navigator extends NavigationMixin(LightningElement) {
 
-    navigateToRecord(recordId) {
+    navigateToRecord(recordId, objectApiName = 'Account') {
         this[NavigationMixin.Navigate]({
             type: 'standard__recordPage',
             attributes: {
-                recordId: recordId,
-                objectApiName: 'Account',
+                recordId,
+                objectApiName,
                 actionName: 'view'
             }
         });
     }
 
-    navigateToList() {
+    navigateToList(objectApiName, filterName = 'Recent') {
         this[NavigationMixin.Navigate]({
             type: 'standard__objectPage',
             attributes: {
-                objectApiName: 'Account',
+                objectApiName,
                 actionName: 'list'
             },
-            state: {
-                filterName: 'Recent'
-            }
+            state: { filterName }
         });
     }
 
-    navigateToCustomTab() {
+    navigateToNewRecord(objectApiName, defaultValues = {}) {
         this[NavigationMixin.Navigate]({
-            type: 'standard__navItemPage',
+            type: 'standard__objectPage',
             attributes: {
-                apiName: 'CustomTab'
+                objectApiName,
+                actionName: 'new'
+            },
+            state: {
+                defaultFieldValues: Object.entries(defaultValues)
+                    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+                    .join(',')
             }
         });
     }
@@ -525,12 +776,246 @@ export default class Navigator extends NavigationMixin(LightningElement) {
 
 ---
 
+## SLDS 2 Validation (165-Point Scoring)
+
+The sf-lwc skill includes automated SLDS 2 validation that ensures dark mode compatibility, accessibility, and modern styling.
+
+| Category | Points | Key Checks |
+|----------|--------|------------|
+| **SLDS Class Usage** | 25 | Valid class names, proper `slds-*` utilities |
+| **Accessibility** | 25 | ARIA labels, roles, alt-text, keyboard navigation |
+| **Dark Mode Readiness** | 25 | No hardcoded colors, CSS variables only **(NEW)** |
+| **SLDS Migration** | 20 | No deprecated SLDS 1 patterns/tokens |
+| **Styling Hooks** | 20 | Proper `--slds-g-*` variable usage |
+| **Component Structure** | 15 | Uses `lightning-*` base components |
+| **Performance** | 10 | Efficient selectors, no `!important` |
+| **PICKLES Compliance** | 25 | Architecture methodology adherence (optional) |
+
+**Scoring Thresholds**:
+```
+⭐⭐⭐⭐⭐ 150-165 pts → Production-ready, full SLDS 2 + Dark Mode
+⭐⭐⭐⭐   125-149 pts → Good component, minor styling issues
+⭐⭐⭐     100-124 pts → Functional, needs SLDS cleanup
+⭐⭐       75-99 pts  → Basic functionality, SLDS issues
+⭐         <75 pts   → Needs significant work
+```
+
+---
+
+## Dark Mode Readiness (NEW)
+
+Dark mode is exclusive to SLDS 2 themes. Components must use global styling hooks to support light/dark theme switching.
+
+### Dark Mode Checklist
+
+- [ ] **No hardcoded hex colors** (`#FFFFFF`, `#333333`)
+- [ ] **No hardcoded RGB/RGBA values**
+- [ ] **All colors use CSS variables** (`var(--slds-g-color-*)`)
+- [ ] **Fallback values provided** for SLDS 1 compatibility
+- [ ] **No inline color styles** in HTML templates
+- [ ] **Icons use SLDS utility icons** (auto-adjust for dark mode)
+
+### SLDS 1 → SLDS 2 Migration
+
+**Before (SLDS 1 - Deprecated)**:
+```css
+.my-card {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #dddddd;
+    border-radius: 4px;
+}
+```
+
+**After (SLDS 2 - Dark Mode Ready)**:
+```css
+.my-card {
+    background-color: var(--slds-g-color-surface-container-1, #ffffff);
+    color: var(--slds-g-color-on-surface, #181818);
+    border: 1px solid var(--slds-g-color-border-1, #c9c9c9);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+}
+```
+
+### Global Styling Hooks Reference
+
+| Category | SLDS 2 Variable | Purpose |
+|----------|-----------------|---------|
+| **Surface** | `--slds-g-color-surface-1` to `-4` | Background colors |
+| **Container** | `--slds-g-color-surface-container-1` to `-3` | Card/section backgrounds |
+| **Text** | `--slds-g-color-on-surface` | Primary text |
+| **Text Secondary** | `--slds-g-color-on-surface-1`, `-2` | Muted text |
+| **Border** | `--slds-g-color-border-1`, `-2` | Borders |
+| **Brand** | `--slds-g-color-brand-1`, `-2` | Brand accent |
+| **Error** | `--slds-g-color-error-1` | Error states |
+| **Success** | `--slds-g-color-success-1` | Success states |
+| **Warning** | `--slds-g-color-warning-1` | Warning states |
+| **Spacing** | `--slds-g-spacing-0` to `-12` | Margins/padding |
+| **Font Size** | `--slds-g-font-size-1` to `-10` | Typography |
+| **Radius** | `--slds-g-radius-border-1` to `-4` | Border radius |
+
+**Important**: Component-level hooks (`--slds-c-*`) are NOT supported in SLDS 2 yet. Use only global hooks (`--slds-g-*`).
+
+### SLDS Validator/Linter Commands
+
+```bash
+# Install SLDS Linter
+npm install -g @salesforce-ux/slds-linter
+
+# Run validation
+slds-linter lint force-app/main/default/lwc/myComponent
+
+# Auto-fix issues
+slds-linter lint --fix force-app/main/default/lwc/myComponent
+```
+
+---
+
+## Advanced Jest Testing Patterns
+
+Based on [James Simone's advanced testing patterns](https://www.jamessimone.net/blog/joys-of-apex/advanced-lwc-jest-testing/).
+
+### Render Cycle Helper
+
+```javascript
+// testUtils.js
+export const runRenderingLifecycle = async (reasons = ['render']) => {
+    while (reasons.length > 0) {
+        await Promise.resolve(reasons.pop());
+    }
+};
+
+// Usage in tests
+it('updates after property change', async () => {
+    const element = createElement('c-example', { is: Example });
+    document.body.appendChild(element);
+
+    element.greeting = 'new value';
+    await runRenderingLifecycle(['property change', 'render']);
+
+    expect(element.shadowRoot.querySelector('div').textContent).toBe('new value');
+});
+```
+
+### Proxy Unboxing (LWS Compatibility)
+
+```javascript
+// Lightning Web Security proxifies objects - unbox them for assertions
+const unboxedData = JSON.parse(JSON.stringify(component.data));
+expect(unboxedData).toEqual(expectedData);
+```
+
+### DOM Cleanup Pattern
+
+```javascript
+describe('c-my-component', () => {
+    afterEach(() => {
+        // Clean up DOM to prevent state bleed
+        while (document.body.firstChild) {
+            document.body.removeChild(document.body.firstChild);
+        }
+        jest.clearAllMocks();
+    });
+});
+```
+
+### ResizeObserver Polyfill
+
+```javascript
+// jest.setup.js
+if (!window.ResizeObserver) {
+    window.ResizeObserver = class ResizeObserver {
+        constructor(callback) {
+            this.callback = callback;
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+    };
+}
+```
+
+### Complete Test Template
+
+```javascript
+import { createElement } from 'lwc';
+import MyComponent from 'c/myComponent';
+import getData from '@salesforce/apex/MyController.getData';
+
+jest.mock('@salesforce/apex/MyController.getData', () => ({
+    default: jest.fn()
+}), { virtual: true });
+
+const MOCK_DATA = [
+    { Id: '001xx000001', Name: 'Test 1' },
+    { Id: '001xx000002', Name: 'Test 2' }
+];
+
+const runRenderingLifecycle = async (reasons = ['render']) => {
+    while (reasons.length > 0) {
+        await Promise.resolve(reasons.pop());
+    }
+};
+
+describe('c-my-component', () => {
+    afterEach(() => {
+        while (document.body.firstChild) {
+            document.body.removeChild(document.body.firstChild);
+        }
+        jest.clearAllMocks();
+    });
+
+    it('displays data when loaded successfully', async () => {
+        getData.mockResolvedValue(MOCK_DATA);
+
+        const element = createElement('c-my-component', { is: MyComponent });
+        document.body.appendChild(element);
+
+        await runRenderingLifecycle(['wire data fetch', 'render']);
+
+        const items = element.shadowRoot.querySelectorAll('.item');
+        expect(items.length).toBe(2);
+    });
+
+    it('displays error when fetch fails', async () => {
+        getData.mockRejectedValue(new Error('Failed'));
+
+        const element = createElement('c-my-component', { is: MyComponent });
+        document.body.appendChild(element);
+
+        await runRenderingLifecycle(['wire error', 'render']);
+
+        const error = element.shadowRoot.querySelector('.error');
+        expect(error).not.toBeNull();
+    });
+
+    it('fires event when item clicked', async () => {
+        getData.mockResolvedValue(MOCK_DATA);
+        const handler = jest.fn();
+
+        const element = createElement('c-my-component', { is: MyComponent });
+        element.addEventListener('itemselected', handler);
+        document.body.appendChild(element);
+
+        await runRenderingLifecycle();
+
+        const item = element.shadowRoot.querySelector('.item');
+        item.click();
+
+        expect(handler).toHaveBeenCalled();
+        expect(handler.mock.calls[0][0].detail.id).toBe('001xx000001');
+    });
+});
+```
+
+---
+
 ## Apex Controller Patterns
 
-### Basic @AuraEnabled Controller
+### Cacheable Methods (for @wire)
 
 ```apex
-public with sharing class AccountController {
+public with sharing class LwcController {
 
     @AuraEnabled(cacheable=true)
     public static List<Account> getAccounts(String searchTerm) {
@@ -545,41 +1030,63 @@ public with sharing class AccountController {
         ];
     }
 
-    @AuraEnabled
-    public static Account createAccount(Account account) {
-        // Validate input
-        if (String.isBlank(account.Name)) {
-            throw new AuraHandledException('Account name is required');
+    @AuraEnabled(cacheable=true)
+    public static List<PicklistOption> getIndustryOptions() {
+        List<PicklistOption> options = new List<PicklistOption>();
+        Schema.DescribeFieldResult fieldResult =
+            Account.Industry.getDescribe();
+        for (Schema.PicklistEntry entry : fieldResult.getPicklistValues()) {
+            if (entry.isActive()) {
+                options.add(new PicklistOption(entry.getLabel(), entry.getValue()));
+            }
         }
-
-        try {
-            insert account;
-            return account;
-        } catch (DmlException e) {
-            throw new AuraHandledException(e.getMessage());
-        }
+        return options;
     }
 
-    @AuraEnabled
-    public static void updateAccount(Account account) {
-        try {
-            update account;
-        } catch (DmlException e) {
-            throw new AuraHandledException(e.getMessage());
+    public class PicklistOption {
+        @AuraEnabled public String label;
+        @AuraEnabled public String value;
+
+        public PicklistOption(String label, String value) {
+            this.label = label;
+            this.value = value;
         }
     }
 }
 ```
 
-### Wire Adapter Patterns
+### Non-Cacheable Methods (for DML)
 
-| Adapter | Use Case | Example |
-|---------|----------|---------|
-| `getRecord` | Single record by ID | `@wire(getRecord, { recordId: '$recordId', fields: FIELDS })` |
-| `getRecords` | Multiple records | `@wire(getRecords, { records: [{ recordIds: $ids, fields: FIELDS }] })` |
-| `getFieldValue` | Extract field from record | `getFieldValue(this.account.data, NAME_FIELD)` |
-| `getPicklistValues` | Picklist options | `@wire(getPicklistValues, { recordTypeId: '$rtId', fieldApiName: FIELD })` |
-| `getObjectInfo` | Object metadata | `@wire(getObjectInfo, { objectApiName: ACCOUNT_OBJECT })` |
+```apex
+@AuraEnabled
+public static Account createAccount(String accountJson) {
+    Account acc = (Account) JSON.deserialize(accountJson, Account.class);
+
+    // FLS check
+    SObjectAccessDecision decision = Security.stripInaccessible(
+        AccessType.CREATABLE,
+        new List<Account>{ acc }
+    );
+
+    insert decision.getRecords();
+    return (Account) decision.getRecords()[0];
+}
+
+@AuraEnabled
+public static void deleteAccounts(List<Id> accountIds) {
+    if (accountIds == null || accountIds.isEmpty()) {
+        throw new AuraHandledException('No accounts to delete');
+    }
+
+    List<Account> toDelete = [
+        SELECT Id FROM Account
+        WHERE Id IN :accountIds
+        WITH SECURITY_ENFORCED
+    ];
+
+    delete toDelete;
+}
+```
 
 ---
 
@@ -592,27 +1099,22 @@ public with sharing class AccountController {
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>62.0</apiVersion>
     <isExposed>true</isExposed>
-    <masterLabel>Account List</masterLabel>
-    <description>Displays a list of accounts with filtering</description>
+    <masterLabel>Account Dashboard</masterLabel>
+    <description>SLDS 2 compliant account dashboard with dark mode support</description>
     <targets>
         <target>lightning__RecordPage</target>
         <target>lightning__AppPage</target>
         <target>lightning__HomePage</target>
         <target>lightning__FlowScreen</target>
         <target>lightningCommunity__Page</target>
-        <target>lightningCommunity__Default</target>
     </targets>
     <targetConfigs>
         <targetConfig targets="lightning__RecordPage">
             <objects>
                 <object>Account</object>
             </objects>
-            <property name="title" type="String" default="Related Contacts"/>
+            <property name="title" type="String" default="Dashboard"/>
             <property name="maxRecords" type="Integer" default="10"/>
-        </targetConfig>
-        <targetConfig targets="lightning__FlowScreen">
-            <property name="accountId" type="String" role="inputOnly"/>
-            <property name="selectedContact" type="String" role="outputOnly"/>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>
@@ -624,16 +1126,16 @@ public with sharing class AccountController {
 
 | Command | Purpose |
 |---------|---------|
-| `sf lightning generate component` | Create new LWC |
+| `sf lightning generate component --type lwc` | Create new LWC |
 | `sf lightning lwc test run` | Run Jest tests |
-| `sf lightning lint` | Lint LWC code |
-| `sf project deploy start` | Deploy to org |
+| `sf lightning lwc test run --watch` | Watch mode |
+| `sf project deploy start -m LightningComponentBundle` | Deploy LWC |
 
 ### Generate New Component
 
 ```bash
 sf lightning generate component \
-  --name accountList \
+  --name accountDashboard \
   --type lwc \
   --output-dir force-app/main/default/lwc
 ```
@@ -641,14 +1143,14 @@ sf lightning generate component \
 ### Run Tests
 
 ```bash
-# Run all tests
+# All tests
 sf lightning lwc test run
 
-# Run specific test file
-sf lightning lwc test run --spec force-app/main/default/lwc/accountList/__tests__/accountList.test.js
+# Specific component
+sf lightning lwc test run --spec force-app/main/default/lwc/accountList/__tests__
 
-# Watch mode during development
-sf lightning lwc test run --watch
+# With coverage
+sf lightning lwc test run -- --coverage
 ```
 
 ---
@@ -657,26 +1159,14 @@ sf lightning lwc test run --watch
 
 | Requirement | Implementation |
 |-------------|----------------|
-| **Labels** | Use `label` attribute on inputs, `aria-label` on icons |
-| **Keyboard** | All interactive elements focusable, Enter/Space triggers |
-| **Focus** | Visible focus indicator, logical tab order |
-| **Screen Reader** | `aria-live` for dynamic content, `role` attributes |
-| **Color** | Don't rely solely on color, use icons/text |
+| **Labels** | `label` on inputs, `aria-label` on icons |
+| **Keyboard** | Enter/Space triggers, Tab navigation |
+| **Focus** | Visible indicator, logical order |
+| **Live Regions** | `aria-live="polite"` for dynamic content |
 | **Contrast** | 4.5:1 minimum for text |
 
 ```html
-<!-- Accessible button -->
-<lightning-button
-    label="Delete Account"
-    icon-name="utility:delete"
-    onclick={handleDelete}
-    aria-describedby="delete-help">
-</lightning-button>
-<span id="delete-help" class="slds-assistive-text">
-    This will permanently delete the account
-</span>
-
-<!-- Accessible live region -->
+<!-- Accessible dynamic content -->
 <div aria-live="polite" class="slds-assistive-text">
     {statusMessage}
 </div>
@@ -684,49 +1174,15 @@ sf lightning lwc test run --watch
 
 ---
 
-## Performance Best Practices
-
-1. **Lazy Loading**: Use `if:true/false` to defer rendering
-2. **Debounce**: Debounce search inputs
-3. **Virtual Scrolling**: Use `lightning-datatable` for large lists
-4. **Memoization**: Cache computed values with getters
-5. **Event Cleanup**: Unsubscribe in `disconnectedCallback`
-
-```javascript
-// Debounce pattern
-import { LightningElement } from 'lwc';
-
-export default class SearchBox extends LightningElement {
-    searchTerm = '';
-    delayTimeout;
-
-    handleSearchChange(event) {
-        const searchTerm = event.target.value;
-
-        // Clear previous timeout
-        clearTimeout(this.delayTimeout);
-
-        // Debounce 300ms
-        this.delayTimeout = setTimeout(() => {
-            this.searchTerm = searchTerm;
-            this.dispatchEvent(new CustomEvent('search', {
-                detail: { searchTerm }
-            }));
-        }, 300);
-    }
-}
-```
-
----
-
 ## Cross-Skill Integration
 
-| Skill | When to Use | Example |
-|-------|-------------|---------|
-| sf-apex | Generate Apex controllers | `Skill(skill="sf-apex", args="Create AccountController with @AuraEnabled methods")` |
-| sf-testing | Generate Jest tests | `Skill(skill="sf-testing", args="Generate Jest tests for accountList LWC")` |
-| sf-deploy | Deploy components | `Skill(skill="sf-deploy", args="Deploy accountList LWC to sandbox")` |
-| sf-metadata | Create message channels | `Skill(skill="sf-metadata", args="Create AccountSelected__c message channel")` |
+| Skill | Use Case |
+|-------|----------|
+| sf-apex | Generate Apex controllers |
+| sf-flow | Embed components in Flows |
+| sf-testing | Generate Jest tests |
+| sf-deploy | Deploy components |
+| sf-metadata | Create message channels |
 
 ---
 
@@ -740,11 +1196,21 @@ export default class SearchBox extends LightningElement {
 - Node.js 18+
 - Jest (`@salesforce/sfdx-lwc-jest`)
 
-**Recommended**:
-- sf-apex (for controller generation)
-- sf-deploy (for deployment)
+**For SLDS Validation**:
+- `@salesforce-ux/slds-linter` (optional)
 
 Install: `/plugin install github:Jaganpro/sf-skills/sf-lwc`
+
+---
+
+## References
+
+- [PICKLES Framework (Salesforce Ben)](https://www.salesforceben.com/the-ideal-framework-for-architecting-salesforce-lightning-web-components/)
+- [LWC Recipes (GitHub)](https://github.com/trailheadapps/lwc-recipes)
+- [SLDS 2 Transition Guide](https://www.lightningdesignsystem.com/2e1ef8501/p/8184ad-transition-to-slds-2)
+- [SLDS Styling Hooks](https://developer.salesforce.com/docs/platform/lwc/guide/create-components-css-custom-properties.html)
+- [James Simone - Composable Modal](https://www.jamessimone.net/blog/joys-of-apex/lwc-composable-modal/)
+- [James Simone - Advanced Jest Testing](https://www.jamessimone.net/blog/joys-of-apex/advanced-lwc-jest-testing/)
 
 ---
 

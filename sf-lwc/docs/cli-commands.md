@@ -385,3 +385,132 @@ sf project retrieve start \
 # Compare and resolve
 diff -r force-app/main/default/lwc/myComponent temp-retrieve/force-app/.../myComponent
 ```
+
+---
+
+## Static Analysis (SLDS & ESLint)
+
+### Salesforce Code Analyzer
+
+The Code Analyzer validates LWC files for SLDS 2 compliance, accessibility, and security.
+
+```bash
+# Install Code Analyzer plugin
+sf plugins install @salesforce/sfdx-scanner
+
+# Run full scan on LWC components
+sf code-analyzer run \
+  --target force-app/main/default/lwc \
+  --format html \
+  --outfile lwc-scan-results.html
+
+# Run specific rule categories
+sf code-analyzer run \
+  --target force-app/main/default/lwc \
+  --engine eslint-lwc,pmd \
+  --category "Best Practices,Security"
+```
+
+### SLDS 2 Compliance Checks
+
+```bash
+# Check for hardcoded colors (breaks dark mode)
+rg -n '#[0-9A-Fa-f]{3,8}' force-app/main/default/lwc/**/*.css
+
+# Find deprecated SLDS 1 tokens
+rg -n '\-\-lwc\-' force-app/main/default/lwc/**/*.css
+
+# Find missing alternative-text on icons
+rg -n '<lightning-icon' force-app/main/default/lwc/**/*.html | \
+  rg -v 'alternative-text'
+
+# Check for !important overrides
+rg -n '!important' force-app/main/default/lwc/**/*.css
+```
+
+### Dark Mode Validation
+
+```bash
+# Find all hardcoded colors that may break dark mode
+rg -n 'rgb\(|rgba\(|#[0-9A-Fa-f]{3,8}' \
+  force-app/main/default/lwc/**/*.css \
+  --glob '!**/node_modules/**'
+
+# Verify CSS variables usage (SLDS 2 global hooks)
+rg -n '\-\-slds-g-color' force-app/main/default/lwc/**/*.css
+```
+
+---
+
+## GraphQL Debugging
+
+### GraphQL Wire Service
+
+```bash
+# View GraphQL queries in debug mode (enable in Setup → Debug Logs)
+sf apex tail log --target-org my-sandbox --color \
+  --debug-level FINEST
+
+# Test GraphQL query via Anonymous Apex (for syntax validation)
+sf apex run --target-org my-sandbox <<'EOF'
+// GraphQL syntax can't be tested directly in Apex
+// But you can verify field access:
+System.debug([SELECT Id, Name FROM Account LIMIT 1]);
+EOF
+```
+
+### GraphQL Troubleshooting
+
+| Issue | Possible Cause | Solution |
+|-------|---------------|----------|
+| "Field not found" | FLS restriction | Check user has read access |
+| "Object not supported" | GraphQL scope | Not all objects support GraphQL |
+| Cursor pagination fails | Invalid cursor | Use exact cursor from `pageInfo.endCursor` |
+| Null data | Query error | Check `errors` array in wire result |
+
+### Monitor GraphQL Performance
+
+```bash
+# Open Developer Console for network inspection
+sf org open --target-org my-sandbox \
+  --path /lightning/setup/ApexDebugLogDetail/home
+
+# View Event Monitoring logs (if enabled)
+sf data query \
+  --query "SELECT EventType, LogDate FROM EventLogFile WHERE EventType='LightningPageView' ORDER BY LogDate DESC LIMIT 5" \
+  --target-org my-sandbox
+```
+
+---
+
+## Workspace API (Console Apps)
+
+### Console Detection
+
+```bash
+# Check if an app is a Console app
+sf data query \
+  --query "SELECT DeveloperName, NavType FROM AppDefinition WHERE NavType='Console'" \
+  --target-org my-sandbox
+
+# List all Lightning Apps
+sf data query \
+  --query "SELECT DeveloperName, NavType, Label FROM AppDefinition ORDER BY Label" \
+  --target-org my-sandbox
+```
+
+### Console App Testing
+
+```bash
+# Open Service Console
+sf org open --target-org my-sandbox \
+  --path /lightning/app/standard__ServiceConsole
+
+# Open Sales Console
+sf org open --target-org my-sandbox \
+  --path /lightning/app/standard__SalesConsole
+
+# Open custom console app
+sf org open --target-org my-sandbox \
+  --path /lightning/app/c__MyConsoleApp
+```
