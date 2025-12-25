@@ -61,6 +61,15 @@ Key contributions:
 - SOLID design principles tutorials
 - Unit testing with Apex Mocks
 
+### Saurabh Samir
+**[Medium @saurabh.samirs](https://medium.com/@saurabh.samirs)**
+
+Key contributions:
+- Decorator Pattern for adding behavior without modification
+- Observer Pattern for event-driven architecture
+- Command Pattern for operation queuing and undo
+- Facade Pattern for simplifying complex subsystems
+
 ### César Parra
 **[ApexDocs](https://github.com/cesarParra/apexdocs)**
 

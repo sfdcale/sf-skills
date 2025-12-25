@@ -208,6 +208,194 @@ handleSearch(event) {
 
 ---
 
+## Spread Patterns & Destructuring
+
+### lwc:spread Directive
+
+The `lwc:spread` directive dynamically spreads object properties as component attributes. Useful for reducing boilerplate and enabling dynamic attribute binding.
+
+**Reference**: [Saurabh Samir - lwc:spread Directive](https://medium.com/@saurabh.samirs)
+
+#### Basic Usage
+
+```html
+<!-- Without lwc:spread (verbose) -->
+<lightning-button
+    label={buttonLabel}
+    variant={buttonVariant}
+    disabled={isDisabled}
+    onclick={handleClick}>
+</lightning-button>
+
+<!-- With lwc:spread (dynamic) -->
+<lightning-button lwc:spread={buttonAttributes} onclick={handleClick}></lightning-button>
+```
+
+```javascript
+get buttonAttributes() {
+    return {
+        label: this.buttonLabel,
+        variant: this.isImportant ? 'brand' : 'neutral',
+        disabled: this.isProcessing
+    };
+}
+```
+
+#### lwc:spread vs @api Object Binding
+
+| Approach | Use When | Reactivity |
+|----------|----------|------------|
+| `lwc:spread={obj}` | Passing multiple attributes dynamically | Re-renders on object change |
+| `@api config` | Passing structured data to custom component | Must spread in child |
+| Individual `@api` props | Simple, known properties | Each prop triggers render |
+
+#### Conditional Attribute Spreading
+
+```javascript
+get inputAttributes() {
+    const attrs = {
+        label: 'Search',
+        type: 'text',
+        value: this.searchTerm
+    };
+
+    // Conditionally add attributes
+    if (this.isRequired) {
+        attrs.required = true;
+    }
+
+    if (this.maxLength) {
+        attrs['max-length'] = this.maxLength;
+    }
+
+    return attrs;
+}
+```
+
+```html
+<lightning-input lwc:spread={inputAttributes} onchange={handleChange}></lightning-input>
+```
+
+#### Event Handlers with lwc:spread
+
+**Important**: Event handlers must be bound separately, not spread:
+
+```html
+<!-- ✅ CORRECT: Event handler separate from spread -->
+<lightning-button lwc:spread={buttonProps} onclick={handleClick}></lightning-button>
+
+<!-- ❌ INCORRECT: onclick in spread object won't work -->
+<!-- buttonProps = { label: 'Save', onclick: this.handleClick } -->
+```
+
+### Object Spread & Destructuring
+
+Modern JavaScript patterns for cleaner data handling in LWC.
+
+#### Object Spread for Config Merging
+
+```javascript
+// Default + user config pattern
+const defaultConfig = {
+    pageSize: 10,
+    sortField: 'Name',
+    sortDirection: 'ASC'
+};
+
+get tableConfig() {
+    return {
+        ...defaultConfig,
+        ...this.userConfig  // User config overrides defaults
+    };
+}
+```
+
+#### Destructuring with Defaults
+
+```javascript
+// Extract values with fallbacks
+handleRecordLoad(record) {
+    const {
+        Name = 'Unknown',
+        Industry = 'Not Specified',
+        AnnualRevenue = 0
+    } = record.fields;
+
+    this.accountName = Name.value;
+    this.industry = Industry.value;
+    this.revenue = AnnualRevenue.value;
+}
+```
+
+#### Nested Destructuring
+
+```javascript
+// Deep extraction in single statement
+processResult(result) {
+    const {
+        data: {
+            record: {
+                fields: { Name, BillingCity }
+            }
+        },
+        error
+    } = result;
+
+    if (error) {
+        this.handleError(error);
+        return;
+    }
+
+    this.name = Name.value;
+    this.city = BillingCity.value;
+}
+```
+
+#### Array Spread Patterns
+
+```javascript
+// Immutable array updates (required for LWC reactivity)
+addItem(newItem) {
+    this.items = [...this.items, newItem];  // Append
+}
+
+removeItem(index) {
+    this.items = [
+        ...this.items.slice(0, index),
+        ...this.items.slice(index + 1)
+    ];  // Remove at index
+}
+
+updateItem(index, updates) {
+    this.items = this.items.map((item, i) =>
+        i === index ? { ...item, ...updates } : item
+    );  // Update at index
+}
+```
+
+#### Parameter Spreading in Apex Calls
+
+```javascript
+async handleSubmit() {
+    const result = await createRecord({
+        ...this.recordData,
+        CreatedBy__c: this.currentUserId,
+        Status__c: 'Pending'
+    });
+}
+```
+
+### When to Use Each Pattern
+
+| Pattern | Best For | Avoid When |
+|---------|----------|------------|
+| `lwc:spread` | Many dynamic attributes, base component wrappers | Need event binding, simple static props |
+| Object spread | Config merging, immutable updates | Deep objects (consider structuredClone) |
+| Destructuring | Extracting multiple values, API responses | Simple single-property access |
+| Array spread | Adding/removing items immutably | Large arrays (performance concern) |
+
+---
+
 ## Performance Optimization (PICKLES: Execution)
 
 ### Lifecycle Hook Guidance

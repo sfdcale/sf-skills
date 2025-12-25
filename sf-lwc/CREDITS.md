@@ -26,6 +26,14 @@ Created by [Jag Valaiyapathy](https://github.com/Jaganpro)
 - [SLDS 2 Blog Post](https://www.salesforce.com/blog/new-design-system/) - Salesforce official announcement
 - [SLDS 2 Trailhead Module](https://trailhead.salesforce.com/content/learn/modules/lightning-design-system) - Learn SLDS fundamentals
 
+### Saurabh Samir
+**[Medium @saurabh.samirs](https://medium.com/@saurabh.samirs)**
+
+Key contributions:
+- lwc:spread directive patterns and best practices
+- Dynamic attribute binding techniques
+- Object spread and destructuring patterns for LWC
+
 ## Key Patterns Incorporated
 
 | Pattern | Source | Description |
@@ -35,6 +43,7 @@ Created by [Jag Valaiyapathy](https://github.com/Jaganpro)
 | Focus Trap Pattern | James Simone | Modal accessibility with ESC handling |
 | GraphQL Wire Adapter | Salesforce Docs | Cursor-based pagination pattern |
 | SLDS 2 Styling Hooks | SLDS Guide | `--slds-g-*` CSS variables for dark mode |
+| lwc:spread Directive | Saurabh Samir | Dynamic attribute spreading pattern |
 
 ## License
 

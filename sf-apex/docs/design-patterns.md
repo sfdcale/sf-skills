@@ -541,6 +541,418 @@ public class OrderService {
 
 ---
 
+## Decorator Pattern
+
+### Purpose
+Add functionality dynamically without modifying original class. Stack behaviors flexibly.
+
+### Implementation
+
+```apex
+// Base interface
+public interface NotificationService {
+    void send(String message, Id recipientId);
+}
+
+// Core implementation
+public class EmailNotification implements NotificationService {
+    public void send(String message, Id recipientId) {
+        Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+        email.setTargetObjectId(recipientId);
+        email.setPlainTextBody(message);
+        Messaging.sendEmail(new List<Messaging.SingleEmailMessage>{ email });
+    }
+}
+
+// Decorator base - wraps another NotificationService
+public virtual class NotificationDecorator implements NotificationService {
+    protected NotificationService wrapped;
+
+    public NotificationDecorator(NotificationService service) {
+        this.wrapped = service;
+    }
+
+    public virtual void send(String message, Id recipientId) {
+        wrapped.send(message, recipientId);
+    }
+}
+
+// Concrete decorator: Add logging
+public class LoggingNotificationDecorator extends NotificationDecorator {
+    public LoggingNotificationDecorator(NotificationService service) {
+        super(service);
+    }
+
+    public override void send(String message, Id recipientId) {
+        System.debug('Sending notification to: ' + recipientId);
+        super.send(message, recipientId);
+        System.debug('Notification sent successfully');
+    }
+}
+
+// Concrete decorator: Add retry logic
+public class RetryNotificationDecorator extends NotificationDecorator {
+    private Integer maxRetries;
+
+    public RetryNotificationDecorator(NotificationService service, Integer maxRetries) {
+        super(service);
+        this.maxRetries = maxRetries;
+    }
+
+    public override void send(String message, Id recipientId) {
+        Integer attempts = 0;
+        while (attempts < maxRetries) {
+            try {
+                super.send(message, recipientId);
+                return;
+            } catch (Exception e) {
+                attempts++;
+                if (attempts >= maxRetries) throw e;
+            }
+        }
+    }
+}
+```
+
+### Usage
+
+```apex
+// Stack decorators as needed
+NotificationService service = new EmailNotification();
+service = new LoggingNotificationDecorator(service);
+service = new RetryNotificationDecorator(service, 3);
+
+// Now sends with logging + retry + email
+service.send('Your order shipped!', userId);
+```
+
+### When to Use
+- Adding cross-cutting concerns (logging, caching, validation)
+- When inheritance leads to class explosion
+- Stacking behaviors that can be combined independently
+
+---
+
+## Observer Pattern
+
+### Purpose
+Define one-to-many dependency where observers are notified of state changes automatically.
+
+### Implementation
+
+```apex
+// Observer interface
+public interface AccountObserver {
+    void onAccountUpdated(Account oldAccount, Account newAccount);
+}
+
+// Subject that notifies observers
+public class AccountSubject {
+    private static List<AccountObserver> observers = new List<AccountObserver>();
+
+    public static void attach(AccountObserver observer) {
+        observers.add(observer);
+    }
+
+    public static void detach(AccountObserver observer) {
+        Integer index = observers.indexOf(observer);
+        if (index >= 0) observers.remove(index);
+    }
+
+    public static void notifyObservers(Account oldAccount, Account newAccount) {
+        for (AccountObserver observer : observers) {
+            observer.onAccountUpdated(oldAccount, newAccount);
+        }
+    }
+}
+
+// Concrete observers
+public class SalesNotificationObserver implements AccountObserver {
+    public void onAccountUpdated(Account oldAcc, Account newAcc) {
+        if (newAcc.AnnualRevenue > 1000000 && (oldAcc.AnnualRevenue == null || oldAcc.AnnualRevenue <= 1000000)) {
+            // Notify sales team about new enterprise account
+            createTask(newAcc.OwnerId, 'New Enterprise Account: ' + newAcc.Name);
+        }
+    }
+
+    private void createTask(Id ownerId, String subject) {
+        insert new Task(OwnerId = ownerId, Subject = subject, Status = 'Open');
+    }
+}
+
+public class IntegrationSyncObserver implements AccountObserver {
+    public void onAccountUpdated(Account oldAcc, Account newAcc) {
+        // Queue sync to external system
+        System.enqueueJob(new AccountSyncQueueable(newAcc.Id));
+    }
+}
+```
+
+### Usage in Trigger
+
+```apex
+// TriggerHandler or Action class
+public class AccountTriggerHandler {
+
+    static {
+        // Register observers once
+        AccountSubject.attach(new SalesNotificationObserver());
+        AccountSubject.attach(new IntegrationSyncObserver());
+    }
+
+    public void afterUpdate(List<Account> newList, Map<Id, Account> oldMap) {
+        for (Account acc : newList) {
+            AccountSubject.notifyObservers(oldMap.get(acc.Id), acc);
+        }
+    }
+}
+```
+
+### Platform Events Alternative
+For decoupled, async observers, use Platform Events:
+
+```apex
+// Publish event
+EventBus.publish(new Account_Updated__e(Account_Id__c = acc.Id, Field_Changed__c = 'Status'));
+
+// Subscribe via trigger on platform event
+trigger AccountUpdatedSubscriber on Account_Updated__e (after insert) {
+    // Handle event
+}
+```
+
+---
+
+## Command Pattern
+
+### Purpose
+Encapsulate requests as objects, enabling queuing, logging, undo, and parameterized execution.
+
+### Implementation
+
+```apex
+// Command interface
+public interface Command {
+    void execute();
+    void undo();
+    String getDescription();
+}
+
+// Concrete command: Update Field
+public class UpdateFieldCommand implements Command {
+    private Id recordId;
+    private String fieldName;
+    private Object newValue;
+    private Object oldValue;
+    private SObjectType objectType;
+
+    public UpdateFieldCommand(Id recordId, String fieldName, Object newValue) {
+        this.recordId = recordId;
+        this.fieldName = fieldName;
+        this.newValue = newValue;
+        this.objectType = recordId.getSObjectType();
+    }
+
+    public void execute() {
+        // Store old value for undo
+        SObject record = Database.query(
+            'SELECT ' + fieldName + ' FROM ' + objectType + ' WHERE Id = :recordId'
+        );
+        this.oldValue = record.get(fieldName);
+
+        // Apply new value
+        record.put(fieldName, newValue);
+        update record;
+    }
+
+    public void undo() {
+        SObject record = objectType.newSObject(recordId);
+        record.put(fieldName, oldValue);
+        update record;
+    }
+
+    public String getDescription() {
+        return 'Update ' + objectType + '.' + fieldName + ' to ' + newValue;
+    }
+}
+
+// Command invoker with history
+public class CommandInvoker {
+    private List<Command> history = new List<Command>();
+    private List<Command> queue = new List<Command>();
+
+    public void addToQueue(Command cmd) {
+        queue.add(cmd);
+    }
+
+    public void executeQueue() {
+        for (Command cmd : queue) {
+            cmd.execute();
+            history.add(cmd);
+            // Log for audit trail
+            System.debug('Executed: ' + cmd.getDescription());
+        }
+        queue.clear();
+    }
+
+    public void undoLast() {
+        if (!history.isEmpty()) {
+            Command lastCommand = history.remove(history.size() - 1);
+            lastCommand.undo();
+        }
+    }
+}
+```
+
+### Usage
+
+```apex
+CommandInvoker invoker = new CommandInvoker();
+
+// Queue multiple field updates
+invoker.addToQueue(new UpdateFieldCommand(accountId, 'Status__c', 'Active'));
+invoker.addToQueue(new UpdateFieldCommand(accountId, 'Priority__c', 'High'));
+
+// Execute all
+invoker.executeQueue();
+
+// Undo last operation
+invoker.undoLast();
+```
+
+### Use Cases
+- Wizard/multi-step processes with undo
+- Audit trail with replayable operations
+- Batch processing with deferred execution
+- Macro recording and playback
+
+---
+
+## Facade Pattern
+
+### Purpose
+Provide simplified interface to complex subsystems. Reduce coupling between client and implementation details.
+
+### Implementation
+
+```apex
+// Complex subsystems
+public class CustomerVerificationService {
+    public Boolean verifyIdentity(String customerId) {
+        // Complex identity verification logic
+        return true;
+    }
+}
+
+public class CreditCheckService {
+    public Integer getCreditScore(String customerId) {
+        // Call external credit bureau
+        return 720;
+    }
+
+    public Decimal getAvailableCredit(String customerId) {
+        return 50000.00;
+    }
+}
+
+public class RiskAssessmentService {
+    public String assessRisk(Integer creditScore, Decimal requestedAmount) {
+        if (creditScore > 700 && requestedAmount < 25000) return 'LOW';
+        if (creditScore > 600) return 'MEDIUM';
+        return 'HIGH';
+    }
+}
+
+public class LoanApplicationService {
+    public Id createApplication(Id accountId, Decimal amount) {
+        Loan_Application__c app = new Loan_Application__c(
+            Account__c = accountId,
+            Amount__c = amount,
+            Status__c = 'Pending'
+        );
+        insert app;
+        return app.Id;
+    }
+}
+
+// FACADE: Simplified interface
+public class LoanFacade {
+    private CustomerVerificationService verificationService;
+    private CreditCheckService creditService;
+    private RiskAssessmentService riskService;
+    private LoanApplicationService applicationService;
+
+    public LoanFacade() {
+        this.verificationService = new CustomerVerificationService();
+        this.creditService = new CreditCheckService();
+        this.riskService = new RiskAssessmentService();
+        this.applicationService = new LoanApplicationService();
+    }
+
+    // Single method hides all complexity
+    public LoanResult applyForLoan(Id accountId, String customerId, Decimal amount) {
+        LoanResult result = new LoanResult();
+
+        // Step 1: Verify customer
+        if (!verificationService.verifyIdentity(customerId)) {
+            result.success = false;
+            result.message = 'Identity verification failed';
+            return result;
+        }
+
+        // Step 2: Check credit
+        Integer creditScore = creditService.getCreditScore(customerId);
+        Decimal availableCredit = creditService.getAvailableCredit(customerId);
+
+        if (amount > availableCredit) {
+            result.success = false;
+            result.message = 'Requested amount exceeds available credit';
+            return result;
+        }
+
+        // Step 3: Assess risk
+        String riskLevel = riskService.assessRisk(creditScore, amount);
+
+        // Step 4: Create application
+        result.applicationId = applicationService.createApplication(accountId, amount);
+        result.success = true;
+        result.riskLevel = riskLevel;
+        result.message = 'Loan application submitted successfully';
+
+        return result;
+    }
+
+    public class LoanResult {
+        public Boolean success;
+        public Id applicationId;
+        public String riskLevel;
+        public String message;
+    }
+}
+```
+
+### Usage
+
+```apex
+// Client code is simple - no knowledge of subsystems
+LoanFacade facade = new LoanFacade();
+LoanFacade.LoanResult result = facade.applyForLoan(accountId, 'CUST-123', 15000.00);
+
+if (result.success) {
+    System.debug('Loan approved with risk level: ' + result.riskLevel);
+} else {
+    System.debug('Loan denied: ' + result.message);
+}
+```
+
+### When to Use
+- Simplifying access to complex subsystems
+- Creating API layers for external integrations
+- Reducing dependencies on multiple services
+- Providing entry points for different client needs
+
+---
+
 ## Pattern Selection Guide
 
 | Need | Pattern |
@@ -551,3 +963,7 @@ public class OrderService {
 | Single cached instance | Singleton |
 | Interchangeable algorithms | Strategy |
 | Transactional DML | Unit of Work |
+| Add behavior without modification | Decorator |
+| React to state changes | Observer |
+| Queue/undo operations | Command |
+| Simplify complex systems | Facade |
