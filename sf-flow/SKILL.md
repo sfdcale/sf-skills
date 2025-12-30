@@ -86,6 +86,14 @@ Use **AskUserQuestion** to gather:
 | Platform Event | `platform-event-flow-template.xml` |
 | Autolaunched | `autolaunched-flow-template.xml` |
 | Scheduled | `scheduled-flow-template.xml` |
+| Wait Elements | `wait-template.xml` |
+
+**Element Pattern Templates** (`templates/elements/`):
+| Element | Template | Purpose |
+|---------|----------|---------|
+| Loop | `loop-pattern.xml` | Complete loop with nextValueConnector/noMoreValuesConnector |
+| Get Records | `get-records-pattern.xml` | All recordLookups options (filters, sort, limit) |
+| Delete Records | `record-delete-pattern.xml` | Filter-based and reference-based delete patterns |
 
 **Template Path Resolution** (try in order):
 1. **Marketplace folder**: `~/.claude/plugins/marketplaces/sf-skills/sf-flow/templates/[template].xml`
@@ -209,7 +217,7 @@ For complex flows: `docs/governance-checklist.md` (in sf-flow)
 
 ### Phase 5: Testing & Documentation
 
-**Type-specific testing**: See `docs/testing-guide.md` | `docs/testing-checklist.md`
+**Type-specific testing**: See `docs/testing-guide.md` | `docs/testing-checklist.md` | `docs/wait-patterns.md` (Wait element guidance)
 
 Quick reference:
 - **Screen**: Setup → Flows → Run, test all paths/profiles

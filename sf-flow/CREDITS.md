@@ -66,6 +66,26 @@ Key contributions:
 - Complex flow design strategies
 - Subflow best practices
 
+### Mermaid2SF Project
+**[github.com/krukmat/Mermaid2SF](https://github.com/krukmat/Mermaid2SF)** | Author: Matias Kruk
+
+Key contributions:
+- Flow XML generation patterns (connector-based linking)
+- Wait element structure (Duration, Date, Condition types)
+- Deterministic XML output (alphabetical sorting for git-friendly diffs)
+- Auto-layout coordinate patterns (locationX/Y = 0)
+- Loop element connector structure (nextValueConnector, noMoreValuesConnector)
+
+Research conducted December 2024 to identify Flow XML patterns for template improvements.
+
+### Google Flow Lens
+**[github.com/google/flow-lens](https://github.com/google/flow-lens)**
+
+Key contributions:
+- Flow XML → UML/Mermaid visualization patterns
+- Flow structure analysis approaches
+- Anti-pattern detection strategies
+
 ---
 
 ## Official Salesforce Resources
