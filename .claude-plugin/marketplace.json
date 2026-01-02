@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Salesforce development skills for Claude Code",
-    "version": "2.3.0"
+    "version": "2.4.0"
   },
   "plugins": [
     {
@@ -36,82 +36,210 @@
     {
       "name": "sf-apex",
       "description": "Apex code generation and review with 150-point scoring and TAF patterns",
-      "source": "./sf-apex"
+      "source": "./sf-apex",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "development",
+      "tags": ["salesforce", "apex", "backend", "triggers"],
+      "keywords": ["apex", "trigger", "test-class", "batch", "queueable"]
     },
     {
       "name": "sf-flow",
       "description": "Salesforce Flow creation and validation with 110-point scoring",
-      "source": "./sf-flow"
+      "source": "./sf-flow",
+      "version": "2.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "development",
+      "tags": ["salesforce", "flow", "automation", "declarative"],
+      "keywords": ["flow", "screen-flow", "autolaunched", "subflow"]
     },
     {
       "name": "sf-metadata",
       "description": "Salesforce metadata generation and org querying with 120-point scoring",
-      "source": "./sf-metadata"
+      "source": "./sf-metadata",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "metadata",
+      "tags": ["salesforce", "metadata", "fields", "objects"],
+      "keywords": ["metadata", "custom-field", "object", "permission"]
     },
     {
       "name": "sf-data",
       "description": "Salesforce data operations with SOQL expertise, test data factories, and 130-point validation",
-      "source": "./sf-data"
+      "source": "./sf-data",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "data",
+      "tags": ["salesforce", "soql", "data", "records"],
+      "keywords": ["soql", "data", "records", "test-data", "factory"]
     },
     {
       "name": "sf-deploy",
       "description": "Salesforce DevOps automation using sf CLI v2",
-      "source": "./sf-deploy"
+      "source": "./sf-deploy",
+      "version": "2.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "devops",
+      "tags": ["salesforce", "deployment", "ci-cd", "sfdx"],
+      "keywords": ["deploy", "sfdx", "validation", "ci-cd"]
     },
     {
       "name": "skill-builder",
       "description": "Interactive wizard for creating Claude Code skills",
-      "source": "./skill-builder"
+      "source": "./skill-builder",
+      "version": "2.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "utilities",
+      "tags": ["claude-code", "skills", "generator", "templates"],
+      "keywords": ["skill", "generator", "template", "wizard"]
     },
     {
       "name": "sf-ai-agentforce",
       "description": "Agentforce agent creation using Agent Script syntax with 100-point scoring (API v64+)",
-      "source": "./sf-ai-agentforce"
+      "source": "./sf-ai-agentforce",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "ai",
+      "tags": ["salesforce", "agentforce", "ai-agents", "automation"],
+      "keywords": ["agentforce", "agent", "topic", "action"]
     },
     {
       "name": "sf-diagram",
       "description": "Mermaid diagrams for OAuth flows, ERDs, integrations, and Agentforce architecture with 80-point scoring",
-      "source": "./sf-diagram"
+      "source": "./sf-diagram",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "utilities",
+      "tags": ["salesforce", "diagrams", "mermaid", "visualization"],
+      "keywords": ["mermaid", "diagram", "erd", "flowchart"]
     },
     {
       "name": "sf-integration",
       "description": "Named Credentials, External Services, REST/SOAP callouts, Platform Events, and CDC with 120-point scoring",
-      "source": "./sf-integration"
+      "source": "./sf-integration",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "integration",
+      "tags": ["salesforce", "api", "rest", "callouts"],
+      "keywords": ["rest", "callout", "named-credential", "platform-event"]
     },
     {
       "name": "sf-connected-apps",
       "description": "Connected Apps and External Client Apps with OAuth configuration and 120-point scoring",
-      "source": "./sf-connected-apps"
+      "source": "./sf-connected-apps",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "integration",
+      "tags": ["salesforce", "oauth", "connected-apps", "security"],
+      "keywords": ["oauth", "connected-app", "jwt", "authorization"]
     },
     {
       "name": "sf-lwc",
       "description": "Lightning Web Components development with SLDS 2 validation and 140-point scoring",
-      "source": "./sf-lwc"
+      "source": "./sf-lwc",
+      "version": "2.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "development",
+      "tags": ["salesforce", "lwc", "frontend", "components"],
+      "keywords": ["lwc", "lightning", "component", "slds"]
     },
     {
       "name": "sf-debug",
       "description": "Salesforce debugging with log analysis, governor limits, and agentic fix suggestions",
-      "source": "./sf-debug"
+      "source": "./sf-debug",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "utilities",
+      "tags": ["salesforce", "debug", "logs", "troubleshooting"],
+      "keywords": ["debug", "logs", "governor-limits", "trace"]
     },
     {
       "name": "sf-soql",
       "description": "SOQL query generation, optimization, and 100-point validation",
-      "source": "./sf-soql"
+      "source": "./sf-soql",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "data",
+      "tags": ["salesforce", "soql", "queries", "optimization"],
+      "keywords": ["soql", "query", "selectivity", "optimization"]
     },
     {
       "name": "sf-testing",
       "description": "Apex test execution, coverage analysis, and agentic test-fix loops with 120-point scoring",
-      "source": "./sf-testing"
+      "source": "./sf-testing",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "development",
+      "tags": ["salesforce", "testing", "apex", "coverage"],
+      "keywords": ["testing", "coverage", "apex-test", "assertions"]
     },
     {
       "name": "sf-imagen",
       "description": "AI-powered visual content generation for Salesforce using Nano Banana Pro (Gemini 3 Pro Image)",
-      "source": "./sf-imagen"
+      "source": "./sf-imagen",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "ai",
+      "tags": ["salesforce", "gemini", "image-generation", "visual"],
+      "keywords": ["gemini", "nano-banana", "image", "erd"]
     },
     {
       "name": "sf-ai-agentforce-testing",
       "description": "Agentforce agent testing with test execution, coverage analysis, and agentic fix loops",
-      "source": "./sf-ai-agentforce-testing"
+      "source": "./sf-ai-agentforce-testing",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jag Valaiyapathy",
+        "url": "https://github.com/Jaganpro"
+      },
+      "category": "ai",
+      "tags": ["salesforce", "agentforce", "testing", "agents"],
+      "keywords": ["agent-testing", "test-spec", "coverage"]
     }
   ]
 }
