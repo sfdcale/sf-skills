@@ -411,10 +411,104 @@ python3 hooks/scripts/run-automated-tests.py \
 
 ---
 
+## 🐛 Known Issues & CLI Bugs
+
+> **Last Updated**: 2026-01-04 | **Tested With**: sf CLI v2.118.16
+
+### CRITICAL: `sf agent test create` MasterLabel Bug
+
+**Status**: 🔴 BLOCKING - Prevents YAML-based test creation
+
+**Error**:
+```
+Error (SfError): Required fields are missing: [MasterLabel]
+```
+
+**Root Cause**: The CLI generates XML from YAML but doesn't include the required `name` element (MasterLabel) in the `AiEvaluationDefinition` metadata.
+
+**Workarounds**:
+1. Use `sf agent generate test-spec` (interactive mode) - this works correctly
+2. Create tests via Salesforce Testing Center UI
+3. Deploy XML metadata directly (bypassing YAML conversion)
+
+**Reproduction**:
+```bash
+# Create minimal test spec
+cat > test.yaml << 'EOF'
+subjectType: AGENT
+subjectName: My_Agent
+testCases:
+  - utterance: "Hello"
+    expectation:
+      topic: Welcome
+      actionSequence: []
+EOF
+
+# This will fail:
+sf agent test create --spec test.yaml --api-name MyTest --target-org dev
+# Error: Required fields are missing: [MasterLabel]
+```
+
+---
+
+### YAML vs XML Format Discrepancy
+
+**Issue**: YAML test specs use different field names than the actual XML metadata.
+
+| YAML Field | Generated XML | Working XML (manual) |
+|------------|---------------|---------------------|
+| `topic: Welcome` | `<name>topic_assertion</name>` (empty value!) | `<name>topic_sequence_match</name><expectedValue>Welcome</expectedValue>` |
+| `actionSequence: [a, b]` | `<name>actions_assertion</name>` | `<name>action_sequence_match</name>` |
+| (none) | (missing) | `<name>bot_response_rating</name>` |
+
+**Impact**: Tests created via YAML may have empty or mismatched expectations.
+
+---
+
+### Topic Expectation Not Populated
+
+**Issue**: When YAML includes `topic: TopicName`, the generated XML has empty `expectedValue`:
+
+```xml
+<!-- Generated (BROKEN) -->
+<expectation>
+    <name>topic_assertion</name>
+    <!-- Missing expectedValue! -->
+</expectation>
+
+<!-- Should be -->
+<expectation>
+    <name>topic_assertion</name>
+    <expectedValue>TopicName</expectedValue>
+</expectation>
+```
+
+---
+
+### Agent Metadata Structure
+
+**Understanding agent components** - Agent data is distributed across multiple metadata types:
+
+```
+Bot (Agent Definition)
+ └── BotVersion
+      └── genAiPlannerName → GenAiPlannerBundle
+                              └── (references GenAiFunction for topics)
+
+Retrieve all components:
+  sf project retrieve start --metadata "Bot:AgentName"
+  sf project retrieve start --metadata "GenAiPlannerBundle:AgentName_v1"
+```
+
+**Note**: `BotDefinition` is NOT queryable via Tooling API SOQL. Use metadata retrieval instead.
+
+---
+
 ## 💡 Key Insights
 
 | Problem | Symptom | Solution |
 |---------|---------|----------|
+| **`sf agent test create` fails** | "Required fields are missing: [MasterLabel]" | Use `sf agent generate test-spec` (interactive) or UI instead |
 | Tests fail silently | No results returned | Agent not published - run `sf agent publish authoring-bundle` |
 | Topic not matched | Wrong topic selected | Add keywords to topic description (see [Fix Loops](resources/agentic-fix-loops.md)) |
 | Action not invoked | Action never called | Improve action description, add explicit reference |
@@ -422,6 +516,7 @@ python3 hooks/scripts/run-automated-tests.py \
 | Async tests stuck | Job never completes | Use `sf agent test resume --use-most-recent` |
 | Empty responses | Agent doesn't respond | Check agent is activated |
 | Agent Testing Center unavailable | "INVALID_TYPE" error | Use `sf agent preview` as fallback |
+| Topic expectation empty | Test always passes topic check | Bug in CLI YAML→XML conversion; use interactive mode |
 
 ---
 
