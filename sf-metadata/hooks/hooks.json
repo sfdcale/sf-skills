@@ -11,7 +11,7 @@
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/../../shared/hooks/suggest-related-skills.py sf-metadata",
+            "command": "python3 ~/.claude/plugins/marketplaces/sf-skills/shared/hooks/suggest-related-skills.py sf-metadata",
             "timeout": 5000
           }
         ]
@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/../../shared/hooks/suggest-related-skills.py sf-metadata",
+            "command": "python3 ~/.claude/plugins/marketplaces/sf-skills/shared/hooks/suggest-related-skills.py sf-metadata",
             "timeout": 5000
           }
         ]
