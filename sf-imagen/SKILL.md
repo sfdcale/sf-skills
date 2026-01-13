@@ -6,7 +6,7 @@ description: >
   Also provides Gemini as a parallel sub-agent for code review and research.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   author: "Jag Valaiyapathy"
   scoring: "80 points across 5 categories"
 ---
@@ -30,11 +30,16 @@ Gemini CLI with Nano Banana Pro extension.
 
 | Requirement | Description | How to Get |
 |-------------|-------------|------------|
-| **Ghostty Terminal** | Required for Kitty graphics protocol | https://ghostty.org |
+| **macOS** | Required for Preview app image display | Built-in |
 | **GEMINI_API_KEY** | Personal API key for Nano Banana Pro | https://aistudio.google.com/apikey |
 | **Gemini CLI** | Command-line interface for Gemini | `npm install -g @google/gemini-cli` |
 | **Nano Banana Extension** | Image generation extension | `gemini extensions install nanobanana` |
-| **timg** | Terminal image viewer with Kitty support | `brew install timg` |
+
+### Optional (for terminal display)
+| Requirement | Description | How to Get |
+|-------------|-------------|------------|
+| Ghostty Terminal | For Kitty graphics protocol | https://ghostty.org |
+| timg | Terminal image viewer | `brew install timg` |
 
 ### Setting Up API Key
 
@@ -50,7 +55,7 @@ export NANOBANANA_MODEL=gemini-3-pro-image-preview
 Generate actual rendered ERD diagrams (not just Mermaid code):
 - Query object metadata via sf-metadata
 - Generate visual diagram with Nano Banana Pro
-- Display inline using Kitty graphics protocol
+- **Display in macOS Preview app** (default)
 
 ### 2. LWC/UI Mockups
 Generate wireframes and component mockups:
@@ -83,22 +88,19 @@ Parallel Salesforce documentation research:
 2. Query object metadata via sf-metadata (if org connected)
 3. Build Nano Banana prompt with object relationships
 4. Execute Gemini CLI with `/generate` command (requires --yolo flag)
-5. Display result inline using `timg -pk` (Kitty graphics)
+5. **Open result in macOS Preview app using `open` command**
 
 **Example**:
 ```bash
 # Generate image
-export GEMINI_API_KEY="..." && gemini --yolo "/generate 'Professional Salesforce ERD diagram showing:
+gemini --yolo "/generate 'Professional Salesforce ERD diagram showing:
    - Account (blue box, center)
    - Contact (green box, linked to Account with lookup arrow)
    - Opportunity (yellow box, linked to Account with master-detail thick arrow)
    Include legend. Clean white background, Salesforce Lightning style.'"
 
-# Display with Kitty graphics (in Ghostty)
-timg -pk ~/nanobanana-output/[generated-file].png
-
-# Or open in new Ghostty window
-~/bin/show-image-window --latest
+# Open in macOS Preview (DEFAULT)
+open ~/nanobanana-output/[generated-file].png
 ```
 
 ### Pattern B: LWC Mockup
@@ -109,7 +111,7 @@ timg -pk ~/nanobanana-output/[generated-file].png
 1. Load appropriate template from `templates/lwc/`
 2. Customize prompt with user requirements
 3. Execute via Nano Banana
-4. Display inline
+4. Open in Preview app
 
 ### Pattern C: Parallel Code Review
 
@@ -145,29 +147,32 @@ gemini "Review this Apex trigger for:
 
 ```bash
 # Generate image from prompt (MUST use --yolo for non-interactive)
-export GEMINI_API_KEY="..." && gemini --yolo "/generate 'description'"
+gemini --yolo "/generate 'description'"
 
 # Images are saved to ~/nanobanana-output/
 ```
 
-### Image Display (Kitty Graphics - Ghostty Only)
+### Image Display
 
 ```bash
-# Display inline in current terminal
+# DEFAULT: Open in macOS Preview app
+open /path/to/image.png
+
+# Open most recent generated image
+open ~/nanobanana-output/$(ls -t ~/nanobanana-output/*.png | head -1)
+```
+
+### Alternative Display Methods
+
+```bash
+# View inline in Claude Code conversation (multimodal vision)
+# Use the Read tool → /path/to/image.png
+
+# Terminal display with Kitty graphics (requires Ghostty + timg)
 timg -pk -g 120x40 /path/to/image.png
 
-# Open in new Ghostty window (recommended from Claude Code)
+# Open in new Ghostty window
 ~/bin/show-image-window /path/to/image.png
-~/bin/show-image-window --latest  # Most recent image
-```
-
-### Viewing in Claude Code
-
-Since Claude Code captures terminal output (including Kitty escape sequences as raw text),
-use the **Read tool** to view images inline in the conversation:
-
-```
-Read tool → /path/to/image.png → Claude's multimodal vision renders it
 ```
 
 ---
@@ -188,8 +193,7 @@ Read tool → /path/to/image.png → Claude's multimodal vision renders it
 | Script | Location | Purpose |
 |--------|----------|---------|
 | `check-prerequisites.sh` | `scripts/` | Verify all requirements before use |
-| `show-image.sh` | `scripts/` | Display images in current terminal |
-| `show-image-window` | `~/bin/` | Open image in new Ghostty window |
+| `show-image.sh` | `scripts/` | Display images in current terminal (optional) |
 
 ---
 
@@ -217,15 +221,14 @@ Read tool → /path/to/image.png → Claude's multimodal vision renders it
 
 ### Prerequisites Check Failed
 Run `scripts/check-prerequisites.sh` and fix each issue:
-- **Not Ghostty**: sf-imagen requires Ghostty terminal for Kitty graphics
 - **No API Key**: Set GEMINI_API_KEY in ~/.zshrc (personal key from aistudio.google.com)
 - **No Gemini CLI**: Install with npm
 - **No Nano Banana**: Install extension via gemini CLI
-- **No timg**: Install with brew
 
-### Image Not Displaying in Claude Code
-- Use the **Read tool** to view images (Claude's multimodal vision)
-- Or run `~/bin/show-image-window` to open in new Ghostty window
+### Image Not Opening
+- Ensure you're on macOS (Preview app is macOS-only)
+- Check the file path exists: `ls ~/nanobanana-output/`
+- Try opening manually: `open ~/nanobanana-output/[filename].png`
 
 ### API Key Errors
 - Ensure GEMINI_API_KEY is exported in current shell

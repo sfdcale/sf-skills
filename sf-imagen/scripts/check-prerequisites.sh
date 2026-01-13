@@ -1,29 +1,32 @@
 #!/bin/bash
 # check-prerequisites.sh - Verify sf-imagen requirements before use
-# Returns 0 if all checks pass, 1 if any fail
+# Returns 0 if all required checks pass, 1 if any required fail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+GRAY='\033[0;90m'
 NC='\033[0m'
 
 ERRORS=0
+WARNINGS=0
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  📸 SF-IMAGEN PREREQUISITES CHECK${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
+echo -e "${GRAY}  REQUIRED:${NC}"
 
-# Check 1: Ghostty Terminal
-echo -n "  Checking terminal (Ghostty required)... "
-if [[ "$TERM_PROGRAM" == "ghostty" ]] || [[ -n "$GHOSTTY_RESOURCES_DIR" ]]; then
-    echo -e "${GREEN}✓ Ghostty detected${NC}"
+# Check 1: macOS (required for Preview app)
+echo -n "  Checking macOS (for Preview app)... "
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo -e "${GREEN}✓ macOS detected${NC}"
 else
-    echo -e "${RED}✗ Not Ghostty${NC}"
-    echo -e "    ${YELLOW}→ sf-imagen requires Ghostty for Kitty graphics protocol${NC}"
-    echo -e "    ${YELLOW}→ Current terminal: ${TERM_PROGRAM:-unknown}${NC}"
+    echo -e "${RED}✗ Not macOS${NC}"
+    echo -e "    ${YELLOW}→ sf-imagen uses macOS Preview app for image display${NC}"
+    echo -e "    ${YELLOW}→ Current OS: $OSTYPE${NC}"
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -44,11 +47,11 @@ fi
 # Check 3: Gemini CLI
 echo -n "  Checking Gemini CLI... "
 if command -v gemini &> /dev/null; then
-    GEMINI_VERSION=$(gemini +version 2>/dev/null | head -1 || echo "installed")
+    GEMINI_VERSION=$(gemini --version 2>/dev/null | head -1 || echo "installed")
     echo -e "${GREEN}✓ $GEMINI_VERSION${NC}"
 else
     echo -e "${RED}✗ Not installed${NC}"
-    echo -e "    ${YELLOW}→ Install: npm install -g @anthropic-ai/gemini-cli${NC}"
+    echo -e "    ${YELLOW}→ Install: npm install -g @google/gemini-cli${NC}"
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -62,27 +65,46 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# Check 5: timg
-echo -n "  Checking timg (image display)... "
+echo ""
+echo -e "${GRAY}  OPTIONAL (for terminal display):${NC}"
+
+# Check 5: Ghostty Terminal (optional)
+echo -n "  Checking Ghostty terminal... "
+if [[ "$TERM_PROGRAM" == "ghostty" ]] || [[ -n "$GHOSTTY_RESOURCES_DIR" ]]; then
+    echo -e "${GREEN}✓ Ghostty detected${NC}"
+else
+    echo -e "${YELLOW}○ Not Ghostty (optional)${NC}"
+    echo -e "    ${GRAY}→ Kitty graphics require Ghostty: https://ghostty.org${NC}"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+# Check 6: timg (optional)
+echo -n "  Checking timg... "
 if command -v timg &> /dev/null; then
     TIMG_VERSION=$(timg --version 2>&1 | head -1)
     echo -e "${GREEN}✓ $TIMG_VERSION${NC}"
 else
-    echo -e "${RED}✗ Not installed${NC}"
-    echo -e "    ${YELLOW}→ Install: brew install timg${NC}"
-    ERRORS=$((ERRORS + 1))
+    echo -e "${YELLOW}○ Not installed (optional)${NC}"
+    echo -e "    ${GRAY}→ Terminal image display: brew install timg${NC}"
+    WARNINGS=$((WARNINGS + 1))
 fi
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 if [[ $ERRORS -eq 0 ]]; then
-    echo -e "  ${GREEN}✅ All prerequisites met! sf-imagen is ready to use.${NC}"
+    if [[ $WARNINGS -gt 0 ]]; then
+        echo -e "  ${GREEN}✅ All required prerequisites met!${NC}"
+        echo -e "  ${YELLOW}⚠️  $WARNINGS optional feature(s) unavailable${NC}"
+    else
+        echo -e "  ${GREEN}✅ All prerequisites met! sf-imagen is ready to use.${NC}"
+    fi
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     exit 0
 else
-    echo -e "  ${RED}❌ $ERRORS prerequisite(s) missing. Please fix before using sf-imagen.${NC}"
+    echo -e "  ${RED}❌ $ERRORS required prerequisite(s) missing.${NC}"
+    echo -e "  ${RED}   Please fix before using sf-imagen.${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     exit 1
