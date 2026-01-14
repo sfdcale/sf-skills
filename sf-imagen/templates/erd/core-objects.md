@@ -42,6 +42,23 @@ FORMAT:
 ## Usage
 
 ```bash
-gemini "/generate '[paste prompt above with customizations]'"
-timg ~/gemini-images/[generated-file].png
+# Draft at 1K (iterate here)
+gemini --yolo "/generate '[paste prompt above with customizations]'"
+open ~/nanobanana-output/*.png  # Review and refine
+
+# Final at 4K (when satisfied)
+uv run scripts/generate_image.py \
+  -p "[your refined prompt]" \
+  -f "core-objects-erd.png" \
+  -r 4K
+open ~/nanobanana-output/*core-objects*.png
 ```
+
+## Resolution Guide
+
+| Phase | Resolution | Use Case |
+|-------|------------|----------|
+| Draft | 1K (CLI) | Quick iteration, prompt refinement |
+| Final | 4K (Python) | Documentation, presentations |
+
+**Tip**: Iterate at 1K until layout is correct, then generate 4K final.

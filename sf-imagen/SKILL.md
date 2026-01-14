@@ -6,7 +6,7 @@ description: >
   Also provides Gemini as a parallel sub-agent for code review and research.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   author: "Jag Valaiyapathy"
   scoring: "80 points across 5 categories"
 ---
@@ -35,11 +35,10 @@ Gemini CLI with Nano Banana Pro extension.
 | **Gemini CLI** | Command-line interface for Gemini | `npm install -g @google/gemini-cli` |
 | **Nano Banana Extension** | Image generation extension | `gemini extensions install nanobanana` |
 
-### Optional (for terminal display)
+### Optional (for 4K/editing via Python script)
 | Requirement | Description | How to Get |
 |-------------|-------------|------------|
-| Ghostty Terminal | For Kitty graphics protocol | https://ghostty.org |
-| timg | Terminal image viewer | `brew install timg` |
+| uv | Fast Python package runner | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 
 ### Setting Up API Key
 
@@ -74,6 +73,89 @@ Parallel Salesforce documentation research:
 - Look up API references and limits
 - Find best practices and patterns
 - Research release notes
+
+---
+
+## 🔄 Draft → Final Workflow (Cost-Effective Iteration)
+
+For complex visuals, iterate at low resolution before generating the final:
+
+| Phase | Resolution | Purpose | Time | Method |
+|-------|------------|---------|------|--------|
+| **Draft** | 1K | Quick feedback, prompt refinement | ~3s | CLI or Python |
+| **Iteration** | 1K | Style/layout adjustments | ~3s | CLI `/edit` or Python |
+| **Final** | 4K | Production-quality output | ~10s | Python script only |
+
+### Recommended Workflow
+
+1. **Draft at 1K** - Generate initial image quickly
+2. **Iterate** - Refine prompt or use `/edit` to adjust
+3. **Final at 4K** - Once satisfied, generate production quality
+
+### Example: Draft to Final
+
+```bash
+# Step 1: Draft (fast, cheap)
+gemini --yolo "/generate 'Account-Contact ERD with blue boxes'"
+open ~/nanobanana-output/*.png  # Review
+
+# Step 2: Iterate with /edit
+gemini --yolo "/edit 'Add Opportunity, use thicker arrows'"
+
+# Step 3: Final at 4K (requires Python script)
+uv run scripts/generate_image.py \
+  -p "Account-Contact-Opportunity ERD, blue boxes, thick arrows, legend" \
+  -f "crm-erd-final.png" \
+  -r 4K
+open ~/nanobanana-output/*crm-erd-final*.png
+```
+
+---
+
+## Image Editing with /edit
+
+Refine existing images with natural language instructions:
+
+```bash
+# Edit the most recent generated image
+gemini --yolo "/edit 'Move Account box to center, make relationship arrows thicker'"
+
+# Common editing commands
+gemini --yolo "/edit 'Add a legend in the bottom right corner'"
+gemini --yolo "/edit 'Change background to light gray'"
+gemini --yolo "/edit 'Add Salesforce Lightning blue (#0176D3) to headers'"
+```
+
+### Editing via Python Script (with resolution control)
+
+```bash
+uv run scripts/generate_image.py \
+  -p "Add legend in bottom right, use SLDS colors" \
+  -i ~/nanobanana-output/previous-erd.png \
+  -f "erd-with-legend.png" \
+  -r 2K
+```
+
+---
+
+## Artistic Styles & Variations
+
+The CLI extension supports style modifiers for creative control:
+
+```bash
+# Apply artistic styles
+gemini --yolo "/generate 'Salesforce ERD' --styles=modern,minimalist"
+
+# Available styles
+# photorealistic, watercolor, oil-painting, sketch, pixel-art
+# anime, vintage, modern, abstract, minimalist
+
+# Generate multiple variations
+gemini --yolo "/generate 'Dashboard mockup' --count=3 --variations=color-palette"
+
+# Reproducible output with seed
+gemini --yolo "/generate 'Account ERD' --seed=42"
+```
 
 ---
 
@@ -155,24 +237,14 @@ gemini --yolo "/generate 'description'"
 ### Image Display
 
 ```bash
-# DEFAULT: Open in macOS Preview app
+# Open in macOS Preview app (default)
 open /path/to/image.png
 
 # Open most recent generated image
 open ~/nanobanana-output/$(ls -t ~/nanobanana-output/*.png | head -1)
-```
 
-### Alternative Display Methods
-
-```bash
 # View inline in Claude Code conversation (multimodal vision)
 # Use the Read tool → /path/to/image.png
-
-# Terminal display with Kitty graphics (requires Ghostty + timg)
-timg -pk -g 120x40 /path/to/image.png
-
-# Open in new Ghostty window
-~/bin/show-image-window /path/to/image.png
 ```
 
 ---
@@ -193,7 +265,7 @@ timg -pk -g 120x40 /path/to/image.png
 | Script | Location | Purpose |
 |--------|----------|---------|
 | `check-prerequisites.sh` | `scripts/` | Verify all requirements before use |
-| `show-image.sh` | `scripts/` | Display images in current terminal (optional) |
+| `generate_image.py` | `scripts/` | Direct API script for 4K resolution and image editing |
 
 ---
 

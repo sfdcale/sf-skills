@@ -66,26 +66,16 @@ else
 fi
 
 echo ""
-echo -e "${GRAY}  OPTIONAL (for terminal display):${NC}"
+echo -e "${GRAY}  OPTIONAL (for 4K/editing via Python script):${NC}"
 
-# Check 5: Ghostty Terminal (optional)
-echo -n "  Checking Ghostty terminal... "
-if [[ "$TERM_PROGRAM" == "ghostty" ]] || [[ -n "$GHOSTTY_RESOURCES_DIR" ]]; then
-    echo -e "${GREEN}✓ Ghostty detected${NC}"
-else
-    echo -e "${YELLOW}○ Not Ghostty (optional)${NC}"
-    echo -e "    ${GRAY}→ Kitty graphics require Ghostty: https://ghostty.org${NC}"
-    WARNINGS=$((WARNINGS + 1))
-fi
-
-# Check 6: timg (optional)
-echo -n "  Checking timg... "
-if command -v timg &> /dev/null; then
-    TIMG_VERSION=$(timg --version 2>&1 | head -1)
-    echo -e "${GREEN}✓ $TIMG_VERSION${NC}"
+# Check 5: uv (optional, for Python script)
+echo -n "  Checking uv (Python runner)... "
+if command -v uv &> /dev/null; then
+    UV_VERSION=$(uv --version 2>&1 | head -1)
+    echo -e "${GREEN}✓ $UV_VERSION${NC}"
 else
     echo -e "${YELLOW}○ Not installed (optional)${NC}"
-    echo -e "    ${GRAY}→ Terminal image display: brew install timg${NC}"
+    echo -e "    ${GRAY}→ For 4K resolution/editing: curl -LsSf https://astral.sh/uv/install.sh | sh${NC}"
     WARNINGS=$((WARNINGS + 1))
 fi
 
