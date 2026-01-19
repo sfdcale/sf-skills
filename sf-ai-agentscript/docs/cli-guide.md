@@ -9,33 +9,54 @@
 | Command | Purpose | Example |
 |---------|---------|---------|
 | `sf agent retrieve` | Pull agent from org | `sf agent retrieve --name MyAgent --target-org sandbox` |
-| `sf agent validate` | Check syntax before deploy | `sf agent validate --source-dir ./my-agent` |
+| `sf agent validate authoring-bundle` | Check syntax before deploy | `sf agent validate authoring-bundle --source-dir ./aiAuthoringBundles/MyAgent` |
+| `sf agent publish authoring-bundle` | Publish agent to org | `sf agent publish authoring-bundle --source-dir ./aiAuthoringBundles/MyAgent` |
 | `sf agent deploy` | Push to target org | `sf agent deploy --source-dir ./my-agent --target-org prod` |
 | `sf agent test run` | Run batch tests | `sf agent test run --name MyAgent --test-suite AllTests` |
+
+> ⚠️ **CRITICAL**: Use `sf agent publish authoring-bundle` for Agent Script deployment, NOT `sf project deploy start`. The metadata API deploy will fail with "Required fields are missing: [BundleType]".
 
 ---
 
 ## Authoring Bundle Structure
 
+> ⚠️ **CRITICAL NAMING CONVENTION**: File must be named `AgentName.bundle-meta.xml`, NOT `AgentName.aiAuthoringBundle-meta.xml`. The metadata API expects `.bundle-meta.xml` suffix.
+
 ```
-pronto-refund/
-├── main.agent          # Your Agent Script (REQUIRED)
-├── agent-meta.xml      # Salesforce metadata (REQUIRED)
-├── topics/             # Topic definitions
-│   ├── refund_request.topic
-│   └── escalation.topic
-└── actions/            # Action specifications
-    └── process_refund.action
+force-app/main/default/aiAuthoringBundles/
+└── ProntoRefund/
+    ├── ProntoRefund.agent           # Your Agent Script (REQUIRED)
+    └── ProntoRefund.bundle-meta.xml # Metadata XML (REQUIRED)
 ```
 
-### agent-meta.xml Fields
+### AgentName.bundle-meta.xml Content
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| `label` | Human-readable name | `Pronto Refund Agent` |
-| `status` | Active, Inactive, Draft | `Active` |
-| `apiVersion` | SF API version | `62.0` |
-| `description` | Agent description | `Handles refund requests` |
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiAuthoringBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <bundleType>AGENT</bundleType>
+</AiAuthoringBundle>
+```
+
+> ⚠️ **COMMON ERROR**: Using `<BundleType>` (PascalCase) instead of `<bundleType>` (camelCase) will NOT cause errors, but the field name in the XML element is `bundleType` (lowercase b).
+
+### Bundle Naming Rules
+
+| Component | Convention | Example |
+|-----------|------------|---------|
+| Folder name | PascalCase or snake_case | `ProntoRefund/` or `Pronto_Refund/` |
+| Agent script | Same as folder + `.agent` | `ProntoRefund.agent` |
+| Metadata XML | Same as folder + `.bundle-meta.xml` | `ProntoRefund.bundle-meta.xml` |
+
+### Deployment Command (NOT sf project deploy!)
+
+```bash
+# ✅ CORRECT: Use sf agent publish authoring-bundle
+sf agent publish authoring-bundle --source-dir ./force-app/main/default/aiAuthoringBundles/ProntoRefund
+
+# ❌ WRONG: Do NOT use sf project deploy start
+# This will fail with "Required fields are missing: [BundleType]"
+```
 
 ---
 
@@ -66,19 +87,24 @@ vim ./ProntoRefund/main.agent
 ### Step 3: Validate
 
 ```bash
-# Validate syntax before deployment
-sf agent validate --source-dir ./ProntoRefund
-
-# Validate authoring bundle specifically
-sf agent validate authoring-bundle --source-dir ./ProntoRefund
+# Validate authoring bundle syntax
+sf agent validate authoring-bundle --source-dir ./force-app/main/default/aiAuthoringBundles/ProntoRefund
 ```
 
-### Step 4: Deploy
+### Step 4: Publish
 
 ```bash
-# Deploy to production
-sf agent deploy --source-dir ./ProntoRefund --target-org prod
+# Publish agent to org (4-step process: Validate → Publish → Retrieve → Deploy)
+sf agent publish authoring-bundle --source-dir ./force-app/main/default/aiAuthoringBundles/ProntoRefund
+
+# Expected output:
+# ✔ Validate Bundle    ~1-2s
+# ✔ Publish Agent      ~8-10s
+# ✔ Retrieve Metadata  ~5-7s
+# ✔ Deploy Metadata    ~4-6s
 ```
+
+> ⚠️ Do NOT use `sf project deploy start` - it will fail with "Required fields are missing: [BundleType]"
 
 ---
 

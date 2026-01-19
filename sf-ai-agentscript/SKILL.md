@@ -125,9 +125,15 @@ start_agent:   # Required: Entry point (exactly one)
 3. **LLM-as-Judge** - Automated scoring against golden responses
 
 ### Phase 5: Deployment
-1. **Commit** - Freeze the script, generates version number
-2. **Activate** - Assign to Connections, go live
-3. **Monitor** - Use trace debugging for production issues
+
+> ⚠️ **CRITICAL**: Use `sf agent publish authoring-bundle`, NOT `sf project deploy start`
+
+1. **Create bundle directory**: `force-app/main/default/aiAuthoringBundles/AgentName/`
+2. **Add files**:
+   - `AgentName.agent` - Your Agent Script
+   - `AgentName.bundle-meta.xml` - Metadata XML (NOT `.aiAuthoringBundle-meta.xml`!)
+3. **Publish**: `sf agent publish authoring-bundle --source-dir ./force-app/main/default/aiAuthoringBundles/AgentName`
+4. **Monitor** - Use trace debugging for production issues
 
 ### Phase 6: CLI Operations
 ```bash
@@ -135,10 +141,26 @@ start_agent:   # Required: Entry point (exactly one)
 sf agent retrieve --name MyAgent --target-org sandbox
 
 # Validate syntax
-sf agent validate --source-dir ./my-agent
+sf agent validate authoring-bundle --source-dir ./force-app/main/default/aiAuthoringBundles/MyAgent
 
-# Deploy to production
-sf agent deploy --source-dir ./my-agent --target-org prod
+# Publish to org (NOT sf project deploy!)
+sf agent publish authoring-bundle --source-dir ./force-app/main/default/aiAuthoringBundles/MyAgent
+```
+
+### Bundle Structure (CRITICAL)
+```
+force-app/main/default/aiAuthoringBundles/
+└── MyAgent/
+    ├── MyAgent.agent              # Agent Script file
+    └── MyAgent.bundle-meta.xml    # NOT .aiAuthoringBundle-meta.xml!
+```
+
+**bundle-meta.xml content:**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiAuthoringBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <bundleType>AGENT</bundleType>
+</AiAuthoringBundle>
 ```
 
 ---
@@ -349,10 +371,19 @@ topic refund:
 | `SyntaxError: cannot mix spaces and tabs` | Mixed indentation | Use consistent spacing throughout |
 | `Transition to undefined topic` | Typo in topic reference | Check spelling, ensure topic exists |
 | `Variables cannot be both mutable AND linked` | Conflicting modifiers | Choose one: mutable for state, linked for external |
-| `Required fields missing: [BundleType]` | Malformed metadata | Ensure XML has only `<bundleType>AGENT</bundleType>` |
+| `Required fields missing: [BundleType]` | Using wrong deploy command | Use `sf agent publish authoring-bundle`, NOT `sf project deploy start` |
+| `Cannot find a bundle-meta.xml file` | Wrong file naming | Rename to `AgentName.bundle-meta.xml`, NOT `.aiAuthoringBundle-meta.xml` |
 | LLM bypasses security check | Using prompts for security | Use `available when` guards instead |
 | Post-action logic doesn't run | Check not at TOP | Move post-action check to first lines |
 | Wrong data retrieved | Missing filter | Wrap retriever in Flow with filter inputs |
+
+### Deployment Gotchas (Validated by Testing)
+
+| ❌ Wrong | ✅ Correct |
+|----------|-----------|
+| `AgentName.aiAuthoringBundle-meta.xml` | `AgentName.bundle-meta.xml` |
+| `sf project deploy start` | `sf agent publish authoring-bundle` |
+| `sf agent validate --source-dir` | `sf agent validate authoring-bundle --source-dir` |
 
 ---
 
