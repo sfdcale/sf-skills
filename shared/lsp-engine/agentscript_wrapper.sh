@@ -5,8 +5,17 @@
 # This script discovers and invokes the Salesforce Agent Script Language Server
 # from the VS Code extension. It's designed to be portable across user machines.
 #
+# IMPORTANT: VS Code Extension REQUIRED
+# --------------------------------------
+# Unlike LWC (which has a standalone npm package), the Agent Script Language
+# Server is ONLY distributed bundled within the VS Code Agent Script extension.
+# There is NO standalone npm package or separate download available.
+#
+# The server is located at:
+#   ~/.vscode/extensions/salesforce.agent-script-language-client-*/server/server.js
+#
 # Prerequisites:
-#   - VS Code with Agent Script extension installed
+#   - VS Code with Agent Script extension installed (REQUIRED)
 #   - Node.js 18+ installed
 #
 # Usage:

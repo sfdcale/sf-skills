@@ -5,8 +5,18 @@
 # This script discovers and invokes the Salesforce Apex Language Server
 # (apex-jorje-lsp.jar) from the VS Code extension.
 #
+# IMPORTANT: VS Code Extension REQUIRED
+# --------------------------------------
+# Unlike LWC (which has a standalone npm package), the Apex Language Server
+# is a Java-based JAR file (apex-jorje-lsp.jar) that is ONLY distributed
+# bundled within the VS Code Salesforce Extension Pack. There is NO standalone
+# npm package or separate download available.
+#
+# The JAR is located at:
+#   ~/.vscode/extensions/salesforce.salesforcedx-vscode-apex-*/dist/apex-jorje-lsp.jar
+#
 # Prerequisites:
-#   - VS Code with Salesforce Apex extension installed
+#   - VS Code with Salesforce Apex extension installed (REQUIRED)
 #   - Java 11+ installed (Adoptium/OpenJDK recommended)
 #
 # Usage:

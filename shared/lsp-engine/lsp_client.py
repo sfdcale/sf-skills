@@ -210,12 +210,22 @@ class LSPClient:
                 return responses
 
             # Initialize LSP
+            # Note: LWC Language Server requires workspaceFolders (not just rootUri)
+            workspace_root = os.path.dirname(file_path)
+            root_uri = f"file://{workspace_root}"
             init_params = {
                 "processId": os.getpid(),
-                "rootUri": f"file://{os.path.dirname(file_path)}",
+                "rootUri": root_uri,
+                "rootPath": workspace_root,
+                "workspaceFolders": [
+                    {"uri": root_uri, "name": os.path.basename(workspace_root)}
+                ],
                 "capabilities": {
                     "textDocument": {
                         "publishDiagnostics": {"relatedInformation": True},
+                    },
+                    "workspace": {
+                        "workspaceFolders": True,
                     }
                 },
             }

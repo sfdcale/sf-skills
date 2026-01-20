@@ -6,15 +6,35 @@ Language Server Protocol integration for Salesforce development skills in Claude
 
 This module provides a shared LSP engine that enables real-time validation of Salesforce files during Claude Code authoring sessions. Currently supports:
 
-- **Agent Script** (`.agent` files) - via Salesforce VS Code extension
-- **Apex** (`.cls`, `.trigger` files) - via Salesforce Apex extension
-- **LWC** (`.js`, `.html` files) - via Salesforce LWC extension
+- **Agent Script** (`.agent` files) - via Salesforce VS Code extension (required)
+- **Apex** (`.cls`, `.trigger` files) - via Salesforce Apex extension (required)
+- **LWC** (`.js`, `.html` files) - via standalone npm package ✅
 
 ## Prerequisites
 
-### For Agent Script (.agent files)
+### Quick Reference: VS Code vs npm
 
-1. **VS Code with Agent Script Extension**
+| Language | VS Code Required? | npm Package Available? |
+|----------|-------------------|------------------------|
+| **LWC** | ❌ No | ✅ `@salesforce/lwc-language-server` |
+| **Apex** | ✅ Yes | ❌ No (Java JAR only) |
+| **Agent Script** | ✅ Yes | ❌ No |
+
+### For LWC (.js, .html files) - npm Package
+
+LWC is the **only** language with a standalone npm package:
+
+```bash
+npm install -g @salesforce/lwc-language-server
+```
+
+That's it! No VS Code required.
+
+### For Agent Script (.agent files) - VS Code Required
+
+**Why VS Code?** The Agent Script LSP is only distributed bundled within the VS Code extension. There is no standalone npm package or separate download available.
+
+1. **VS Code with Agent Script Extension** (REQUIRED)
    - Open VS Code
    - Go to Extensions (Cmd+Shift+X)
    - Search: "Agent Script" by Salesforce
@@ -24,9 +44,11 @@ This module provides a shared LSP engine that enables real-time validation of Sa
    - Required by the LSP server
    - Check: `node --version`
 
-### For Apex (.cls, .trigger files)
+### For Apex (.cls, .trigger files) - VS Code Required
 
-1. **VS Code with Salesforce Extension Pack**
+**Why VS Code?** The Apex LSP is a Java-based JAR file (`apex-jorje-lsp.jar`) that is only distributed bundled within the VS Code Salesforce Extension Pack. There is no standalone npm package or separate download available.
+
+1. **VS Code with Salesforce Extension Pack** (REQUIRED)
    - Open VS Code
    - Go to Extensions (Cmd+Shift+X)
    - Search: "Salesforce Extension Pack"
@@ -36,18 +58,6 @@ This module provides a shared LSP engine that enables real-time validation of Sa
    - Required by the Apex LSP server
    - Check: `java --version`
    - Download: https://adoptium.net/temurin/releases/
-
-### For LWC (.js, .html files)
-
-1. **VS Code with Salesforce Extension Pack**
-   - Open VS Code
-   - Go to Extensions (Cmd+Shift+X)
-   - Search: "Salesforce Extension Pack"
-   - Install (includes LWC Language Server)
-
-2. **Node.js 18+**
-   - Required by the LWC LSP server
-   - Check: `node --version`
 
 ## Usage
 
@@ -238,10 +248,18 @@ Upgrade to Java 11+:
 
 #### "LWC Language Server not found"
 
-The VS Code Salesforce Extension Pack is not installed:
-1. Install from VS Code Marketplace: "Salesforce Extension Pack"
-2. Verify: `ls ~/.vscode/extensions/salesforce.salesforcedx-vscode-lwc-*`
-3. Check server exists: `ls ~/.vscode/extensions/salesforce.salesforcedx-vscode-lwc-*/node_modules/@salesforce/lwc-language-server/bin/`
+The standalone npm package is not installed:
+```bash
+npm install -g @salesforce/lwc-language-server
+```
+
+Verify installation:
+```bash
+which lwc-language-server
+# Should return: /opt/homebrew/bin/lwc-language-server (or similar)
+```
+
+**Note:** Unlike Apex and Agent Script, LWC does NOT require VS Code. The npm package works standalone.
 
 #### "Node.js not found" or "Node.js version too old"
 
