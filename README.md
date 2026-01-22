@@ -7,7 +7,7 @@
 
 A collection of reusable skills for **Agentic Salesforce Development**, enabling AI-powered code generation, validation, testing, debugging, and deployment. Built for Claude Code with planned support for other agentic coding tools.
 
-> **16 skills** • **60+ templates** • **520+ validation points** • **LSP integration**
+> **18 skills** • **60+ templates** • **520+ validation points** • **LSP integration**
 
 ---
 
@@ -263,10 +263,12 @@ python tools/installer.py --cli agentforce-vibes --all
 | 🐛 | **[sf-debug](sf-debug/)** | Debug log analysis, governor limit fixes | 🧪 Quality | 90 | 🔬 Alpha |
 | 📋 | **[sf-metadata](sf-metadata/)** | Metadata gen & org queries | 📦 Foundation | 120 | 🔬 Alpha |
 | 💾 | **[sf-data](sf-data/)** | SOQL & test data factories | 📦 Foundation | — | 🔬 Alpha |
+| 🔐 | **[sf-permissions](sf-permissions/)** | Permission Set analysis, hierarchy viewer, "Who has X?" | 📦 Foundation | — | 🔬 Alpha |
 | 🔐 | **[sf-connected-apps](sf-connected-apps/)** | OAuth apps & ECAs | 🔌 Integration | 120 | 🔬 Alpha |
 | 🔗 | **[sf-integration](sf-integration/)** | Callouts, Events, CDC | 🔌 Integration | 120 | 🔬 Alpha |
 | 🤖 | **[sf-ai-agentforce](sf-ai-agentforce/)** | Agent Script, Topics, Actions, TDD validation (API v65+) | 🤖 AI & Automation | 150 | 🔬 Alpha |
 | 🧪 | **[sf-ai-agentforce-testing](sf-ai-agentforce-testing/)** | Agent test specs, agentic fix loops | 🤖 AI & Automation | 100 | 🔬 Alpha |
+| 📝 | **[sf-ai-agentscript](sf-ai-agentscript/)** | Agent Script DSL, FSM patterns, 100-pt scoring (API v65+) | 🤖 AI & Automation | 100 | 🔬 Alpha |
 | 🚀 | **[sf-deploy](sf-deploy/)** | CI/CD automation (sf CLI v2) | 🚀 DevOps | — | 🔬 Alpha |
 | 📊 | **[sf-diagram-mermaid](sf-diagram-mermaid/)** | Mermaid diagrams & ERD | 🛠️ Tooling | — | 🔬 Alpha |
 | 📸 | **[sf-diagram-nanobananapro](sf-diagram-nanobananapro/)** | Visual ERD, LWC mockups, Gemini sub-agent | 🛠️ Tooling | — | 🔬 Alpha |
@@ -334,6 +336,7 @@ flowchart TB
     subgraph ai["🤖 AI & AGENTS"]
         agentforce["🤖 sf-ai-agentforce"]
         agentforcetesting["🧪 sf-ai-agentforce-testing"]
+        agentscript["📝 sf-ai-agentscript"]
     end
 
     subgraph integration["🔌 INTEGRATION & SECURITY"]
@@ -357,6 +360,7 @@ flowchart TB
     subgraph foundation["📦 FOUNDATION"]
         metadata["📋 sf-metadata"]
         data["💾 sf-data"]
+        permissions["🔐 sf-permissions"]
     end
 
     subgraph devops["🚀 DEVOPS"]
@@ -373,6 +377,7 @@ flowchart TB
     agentforce -->|"API actions"| sfintegration
     agentforce -->|"GenAiFunction"| apex
     agentforcetesting -->|"validates"| agentforce
+    agentscript -->|"DSL for"| agentforce
 
     %% Integration relationships
     sfintegration -->|"OAuth apps"| connectedapps
@@ -401,6 +406,7 @@ flowchart TB
 
     %% Foundation relationships
     data -->|"structure"| metadata
+    permissions -->|"analyzes"| metadata
 
     %% Deployment - all skills can deploy via sf-deploy
     apex -->|"deploy"| deploy
@@ -414,6 +420,7 @@ flowchart TB
     %% Styling - AI (pink-200)
     style agentforce fill:#fbcfe8,stroke:#be185d,color:#1f2937
     style agentforcetesting fill:#fce7f3,stroke:#be185d,color:#1f2937
+    style agentscript fill:#fce7f3,stroke:#be185d,color:#1f2937
 
     %% Styling - Integration (orange-200/teal-200/sky-200)
     style connectedapps fill:#fed7aa,stroke:#c2410c,color:#1f2937
@@ -433,6 +440,7 @@ flowchart TB
     %% Styling - Foundation (cyan-200/amber-200)
     style metadata fill:#a5f3fc,stroke:#0e7490,color:#1f2937
     style data fill:#fde68a,stroke:#b45309,color:#1f2937
+    style permissions fill:#a5f3fc,stroke:#0e7490,color:#1f2937
 
     %% Styling - DevOps (emerald-200)
     style deploy fill:#a7f3d0,stroke:#047857,color:#1f2937
@@ -813,14 +821,16 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | 🧪 | `sf-testing` | Test execution, coverage, bulk testing | ✅ Live |
 | 🐛 | `sf-debug` | Debug log analysis, governor fixes | ✅ Live |
 | 📸 | `sf-diagram-nanobananapro` | Visual ERD, LWC mockups, Gemini sub-agent | ✅ Live |
+| 🔐 | `sf-permissions` | Permission Set analysis, hierarchy viewer, "Who has X?" | ✅ Live |
 | 🔒 | `sf-security` | Sharing rules, org-wide defaults, encryption | 📋 Planned |
 | 📦 | `sf-migration` | Org-to-org, metadata comparison | 📋 Planned |
 
 ### 🤖 AI & Automation
 | | Skill | Description | Status |
 |--|-------|-------------|--------|
-| 🤖 | `sf-ai-agentforce` | Agent Script, Topics, Actions (API v64+) | ✅ Live |
+| 🤖 | `sf-ai-agentforce` | Agent Script, Topics, Actions (API v65+) | ✅ Live |
 | 🧪 | `sf-ai-agentforce-testing` | Agent test specs, agentic fix loops | ✅ Live |
+| 📝 | `sf-ai-agentscript` | Agent Script DSL, FSM patterns, 100-pt scoring | ✅ Live |
 | 🧠 | `sf-ai-copilot` | Einstein Copilot, Prompts | 📋 Planned |
 | 🔮 | `sf-ai-einstein` | Prediction Builder, NBA | 📋 Planned |
 
@@ -844,7 +854,7 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | 🏦 | `sf-industry-finserv` | KYC, AML, Wealth Management | 📋 Planned |
 | 💵 | `sf-industry-revenue` | CPQ, Billing, Revenue Lifecycle | 📋 Planned |
 
-**Total: 26 skills** (16 skills ✅ live, 10 planned 📋)
+**Total: 28 skills** (18 skills ✅ live, 10 planned 📋)
 
 </details>
 
