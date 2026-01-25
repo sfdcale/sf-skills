@@ -426,20 +426,46 @@ Each skill includes validation hooks that run automatically on **Write** and **E
 
 | | Skill | File Type | Validation |
 |--|-------|-----------|------------|
-| ⚡ | sf-apex | `*.cls`, `*.trigger` | 150-pt scoring + Code Analyzer + LSP + Live Query Plan |
+| ⚡ | sf-apex | `*.cls`, `*.trigger` | 150-pt scoring + Code Analyzer + LSP |
 | 🔄 | sf-flow | `*.flow-meta.xml` | 110-pt scoring + Flow Scanner |
-| ⚡ | sf-lwc | `*.js`, `*.html` (LWC) | 140-pt scoring + Code Analyzer + LSP |
-| 🔍 | sf-soql | `*.soql` | 100-pt scoring + **Live Query Plan API** |
+| ⚡ | sf-lwc | `*.js` (LWC) | 140-pt scoring + LSP syntax validation |
+| ⚡ | sf-lwc | `*.html` (LWC) | Template validation (directives, expressions) |
+| 🔍 | sf-soql | `*.soql` | 100-pt scoring + Live Query Plan API |
 | 🧪 | sf-testing | `*Test.cls` | 100-pt scoring + coverage analysis |
 | 🐛 | sf-debug | Debug logs | 90-pt scoring + governor analysis |
-| 📋 | sf-metadata | `*.object-meta.xml`, `*.field-meta.xml` | Metadata best practices |
+| 📋 | sf-metadata | `*.object-meta.xml`, `*.field-meta.xml`, `*.permissionset-meta.xml` | Metadata best practices |
 | 💾 | sf-data | `*.apex`, `*.soql` | SOQL patterns + Live Query Plan |
-| 🤖 | sf-ai-agentforce | `*.agent`, `*.genAiFunction-meta.xml` | Agent Script syntax + LSP |
+| 🤖 | sf-ai-agentscript | `*.agent` | Agent Script syntax + LSP auto-fix |
 | 🧪 | sf-ai-agentforce-testing | Test spec YAML | 100-pt scoring + fix loops |
-| 🔐 | sf-connected-apps | `*.connectedApp-meta.xml` | OAuth security |
-| 🔗 | sf-integration | `*.namedCredential-meta.xml` | Callout patterns |
+| 🔐 | sf-connected-apps | `*.connectedApp-meta.xml` | OAuth security validation |
+| 🔗 | sf-integration | `*.namedCredential-meta.xml` | 120-pt scoring + callout patterns |
 | 📸 | sf-diagram-nanobananapro | Generated images | Prerequisites check |
-| 🛠️ | skill-builder | `SKILL.md` | YAML frontmatter |
+| 🛠️ | skill-builder | `SKILL.md` | YAML frontmatter validation |
+
+#### 🔀 Validator Dispatcher Architecture
+
+All PostToolUse validations are routed through a central dispatcher (`shared/hooks/scripts/validator-dispatcher.py`) that:
+
+1. Receives file path from Write/Edit hook context
+2. Matches file patterns to determine which validators to run
+3. Executes skill-specific validators in sequence
+4. Returns combined validation output
+
+**Routing Table:**
+
+| Pattern | Skill | Validators |
+|---------|-------|------------|
+| `*.agent` | sf-ai-agentscript | agentscript-syntax-validator.py |
+| `*.cls`, `*.trigger` | sf-apex | apex-lsp-validate.py + post-tool-validate.py |
+| `*.flow-meta.xml` | sf-flow | post-tool-validate.py |
+| `/lwc/**/*.js` | sf-lwc | lwc-lsp-validate.py + post-tool-validate.py |
+| `/lwc/**/*.html` | sf-lwc | template_validator.py |
+| `*.object-meta.xml` | sf-metadata | validate_metadata.py |
+| `*.field-meta.xml` | sf-metadata | validate_metadata.py |
+| `*.permissionset-meta.xml` | sf-metadata | validate_metadata.py |
+| `*.namedCredential-meta.xml` | sf-integration | validate_integration.py |
+| `*.soql` | sf-soql | post-tool-validate.py |
+| `SKILL.md` | skill-builder | validate_skill.py |
 
 #### 🔬 Code Analyzer V5 Integration
 
@@ -500,7 +526,7 @@ Skills leverage official Salesforce LSP servers for real-time syntax validation 
 
 | | Skill | File Type | LSP Server | Runtime |
 |--|-------|-----------|------------|---------|
-| 🤖 | sf-ai-agentforce | `*.agent` | Agent Script Language Server | Node.js 18+ |
+| 🤖 | sf-ai-agentscript | `*.agent` | Agent Script Language Server | Node.js 18+ |
 | ⚡ | sf-apex | `*.cls`, `*.trigger` | apex-jorje-lsp.jar | Java 11+ |
 | ⚡ | sf-lwc | `*.js`, `*.html` | @salesforce/lwc-language-server | Node.js 18+ |
 
@@ -576,6 +602,9 @@ Hooks provide **advisory feedback** — they inform but don't block operations.
 *LWC Testing & Linting:*
 - **@salesforce/sfdx-lwc-jest** — Jest testing for LWC (`npm install @salesforce/sfdx-lwc-jest --save-dev`)
 - **@salesforce-ux/slds-linter** — SLDS validation (`npm install -g @salesforce-ux/slds-linter`)
+
+*Skill validation:*
+- **PyYAML** — Required for skill-builder validator (`pip3 install pyyaml`)
 
 *LSP real-time validation (auto-fix loops):*
 - **LWC Language Server** — `npm install -g @salesforce/lwc-language-server` (standalone, no VS Code needed)
