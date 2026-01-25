@@ -3,21 +3,22 @@
 Skill Enforcement Hook (PreToolUse)
 ===================================
 
-Advisory guardrail that warns when editing Salesforce files without
-first activating a skill. This encourages using sf-skills for:
+Enforcing guardrail that BLOCKS editing Salesforce files without
+first activating a skill. This ensures sf-skills are used for:
 - Real-time validation hooks
 - Best practice scoring (150-point, 120-point, etc.)
 - Context-specific guidance
 
 BEHAVIOR:
-- WARN (not block) when SF file edit detected without active skill
+- BLOCK when SF file edit detected without active skill
+- Require Claude to invoke the appropriate skill first
 - Allow silently if skill was invoked within 5 minutes
 - Allow silently for non-SF files
 
-This is advisory-only to maintain user trust while encouraging best practices.
+This enforces skill-first workflow for all Salesforce file types.
 
 Input: JSON via stdin with tool_name, tool_input (file_path for Write/Edit)
-Output: JSON with decision (allow/warn) and optional message
+Output: JSON with decision (allow/block) and message
 
 Installation:
   Add to PreToolUse hooks in install-hooks.py
@@ -114,26 +115,21 @@ def match_sf_file(file_path: str) -> Optional[Tuple[str, str, str]]:
     return None
 
 
-def format_warning(file_path: str, suggested_skill: str, file_type: str) -> str:
-    """Format the advisory warning message."""
+def format_block_message(file_path: str, suggested_skill: str, file_type: str) -> str:
+    """Format the blocking message requiring skill invocation."""
     filename = Path(file_path).name
 
     return f"""
 ╔════════════════════════════════════════════════════════════╗
-║ ⚠️  SF-SKILLS ADVISORY                                      ║
+║ 🛑 SF-SKILLS REQUIRED                                       ║
 ╠════════════════════════════════════════════════════════════╣
-║ You're editing a Salesforce file without activating a skill║
+║ Cannot edit Salesforce files without activating a skill.   ║
 ║                                                            ║
 ║ 📄 File: {filename:<49}║
 ║ 🏷️  Type: {file_type:<48}║
-║ 💡 Suggested: /{suggested_skill:<42}║
+║ ✅ Required: /{suggested_skill:<43}║
 ║                                                            ║
-║ Skills provide:                                            ║
-║   • Real-time validation hooks                             ║
-║   • 150-point code scoring                                 ║
-║   • Best practice enforcement                              ║
-║                                                            ║
-║ Invoke /{suggested_skill} to enable validation              ║
+║ ACTION: Invoke /{suggested_skill} first, then retry.        ║
 ╚════════════════════════════════════════════════════════════╝
 """
 
@@ -190,15 +186,14 @@ def main():
         print(json.dumps({"hookSpecificOutput": {"permissionDecision": "allow"}}))
         sys.exit(0)
 
-    # No active skill - show warning (advisory only, don't block)
-    warning_message = format_warning(file_path, suggested_skill, file_type)
+    # No active skill - DENY and require skill invocation first
+    block_message = format_block_message(file_path, suggested_skill, file_type)
 
     output = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",  # Advisory only - never block
-            "permissionDecisionReason": f"Consider invoking /{suggested_skill} first",
-            "additionalContext": warning_message
+            "permissionDecision": "deny",  # Enforce skill-first workflow
+            "permissionDecisionReason": f"Must invoke /{suggested_skill} first before editing {file_type} files. {block_message}"
         }
     }
 
