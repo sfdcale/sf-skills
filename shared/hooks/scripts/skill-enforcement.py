@@ -34,6 +34,19 @@ from typing import Optional, Tuple
 SKILL_TIMEOUT_MINUTES = 5  # Grace period after skill invocation
 STATE_FILE = Path("/tmp/sf-skills-active-skill.json")
 
+
+def save_active_skill(skill_name: str) -> None:
+    """Save the currently active skill to state file."""
+    state = {
+        "active_skill": skill_name,
+        "timestamp": datetime.now().isoformat()
+    }
+    try:
+        with open(STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception:
+        pass  # Silently fail - don't block on state save errors
+
 # Salesforce file patterns (from validator-dispatcher.py)
 SF_FILE_PATTERNS = [
     (r"\.cls$", "sf-apex", "Apex class"),
@@ -131,29 +144,40 @@ def main():
         hook_input = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
         # No input - allow silently
-        print(json.dumps({"decision": "allow"}))
+        print(json.dumps({"hookSpecificOutput": {"permissionDecision": "allow"}}))
         sys.exit(0)
 
     # Get tool information
     tool_name = hook_input.get("tool_name", "")
     tool_input = hook_input.get("tool_input", {})
 
+    # Detect Skill tool invocation and save state
+    if tool_name == "Skill":
+        skill_name = tool_input.get("skill", "")
+        # Only track sf-skills (skills starting with "sf-")
+        if skill_name.startswith("sf-"):
+            save_active_skill(skill_name)
+        # Always allow Skill tool
+        output = {"hookSpecificOutput": {"permissionDecision": "allow"}}
+        print(json.dumps(output))
+        sys.exit(0)
+
     # Only check for Write and Edit tools
     if tool_name not in ("Write", "Edit"):
-        print(json.dumps({"decision": "allow"}))
+        print(json.dumps({"hookSpecificOutput": {"permissionDecision": "allow"}}))
         sys.exit(0)
 
     # Get file path
     file_path = tool_input.get("file_path", "")
     if not file_path:
-        print(json.dumps({"decision": "allow"}))
+        print(json.dumps({"hookSpecificOutput": {"permissionDecision": "allow"}}))
         sys.exit(0)
 
     # Check if this is a Salesforce file
     sf_match = match_sf_file(file_path)
     if sf_match is None:
         # Not a Salesforce file - allow silently
-        print(json.dumps({"decision": "allow"}))
+        print(json.dumps({"hookSpecificOutput": {"permissionDecision": "allow"}}))
         sys.exit(0)
 
     pattern, suggested_skill, file_type = sf_match
@@ -163,7 +187,7 @@ def main():
 
     if is_active:
         # Skill was invoked recently - allow silently
-        print(json.dumps({"decision": "allow"}))
+        print(json.dumps({"hookSpecificOutput": {"permissionDecision": "allow"}}))
         sys.exit(0)
 
     # No active skill - show warning (advisory only, don't block)

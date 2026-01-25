@@ -58,6 +58,17 @@ SF_SKILLS_HOOKS: Dict[str, Any] = {
                 }
             ],
             "_sf_skills": True
+        },
+        {
+            "matcher": "Skill",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": f"python3 {PLUGIN_ROOT}/shared/hooks/scripts/skill-enforcement.py",
+                    "timeout": 5000
+                }
+            ],
+            "_sf_skills": True
         }
     ],
     "PostToolUse": [
