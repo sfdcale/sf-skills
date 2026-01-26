@@ -283,6 +283,86 @@ def format_prewarm_output(results: Dict[str, Tuple[bool, str, Optional[int]]]) -
     return "\n".join(lines)
 
 
+def is_clear_event(input_data: dict) -> bool:
+    """
+    Detect if this is a /clear command (SessionStart:clear) vs fresh session.
+
+    Claude Code passes event type info that we can use to detect /clear.
+    The hook event name includes ':clear' suffix for context clears.
+    """
+    # Check hook_event_name if provided (e.g., "SessionStart:clear")
+    hook_event = input_data.get("hook_event_name", "") or input_data.get("hook_event", "")
+    if ":clear" in hook_event.lower():
+        return True
+
+    # Check session_id pattern if available
+    session_id = input_data.get("session_id", "")
+    if session_id and ":clear" in session_id.lower():
+        return True
+
+    return False
+
+
+def is_pid_alive(pid: int) -> bool:
+    """Check if a process is still running."""
+    try:
+        os.kill(pid, 0)  # Signal 0 = check existence
+        return True
+    except (OSError, ProcessLookupError):
+        return False
+    except PermissionError:
+        # Process exists but we can't signal it (different user)
+        return True
+
+
+def should_skip_on_clear(input_data: dict) -> bool:
+    """
+    Check if we should skip this hook on a /clear event.
+
+    Returns True if:
+    1. It's a clear event
+    2. State file exists and is fresh (within last hour)
+    3. State indicates success (LSP servers ready and still running)
+    """
+    if not is_clear_event(input_data):
+        return False
+
+    if not STATE_FILE.exists():
+        return False
+
+    try:
+        with open(STATE_FILE, 'r') as f:
+            state = json.load(f)
+
+        # Check freshness (less than 1 hour old)
+        timestamp_str = state.get("timestamp", "")
+        if timestamp_str:
+            timestamp = datetime.fromisoformat(timestamp_str)
+            age = datetime.now() - timestamp
+            if age.total_seconds() > 3600:  # Older than 1 hour
+                return False
+
+        # Check if we had at least one successful server
+        if state.get("ready", 0) == 0:
+            return False
+
+        # Verify at least some servers are still running
+        servers = state.get("servers", {})
+        running_count = 0
+        for server_id, server_info in servers.items():
+            if server_info.get("success") and server_info.get("pid"):
+                if is_pid_alive(server_info["pid"]):
+                    running_count += 1
+
+        # If no servers are running anymore, we should re-prewarm
+        if running_count == 0:
+            return False
+
+        return True
+    except (json.JSONDecodeError, ValueError, KeyError):
+        return False
+
+
 def main():
     """
     Main entry point for the hook.
@@ -292,12 +372,20 @@ def main():
     Claude Code's hook system. Graceful degradation if servers fail to start.
 
     Results are written to STATE_FILE for status line visibility.
+
+    On /clear events, if valid LSP state exists and servers are still running,
+    we skip re-prewarming to prevent status bar flicker.
     """
     # Read input from stdin (SessionStart event)
     try:
         input_data = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
         input_data = {}
+
+    # On /clear: skip if we have fresh, valid state with running servers
+    # This prevents status bar from resetting to "Loading..." unnecessarily
+    if should_skip_on_clear(input_data):
+        sys.exit(0)
 
     # Cleanup any old servers first
     cleanup_old_servers()

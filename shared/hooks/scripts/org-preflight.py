@@ -252,6 +252,62 @@ def format_preflight_output(org_info: Dict) -> str:
     return "\n".join(lines)
 
 
+def is_clear_event(input_data: dict) -> bool:
+    """
+    Detect if this is a /clear command (SessionStart:clear) vs fresh session.
+
+    Claude Code passes event type info that we can use to detect /clear.
+    The hook event name includes ':clear' suffix for context clears.
+    """
+    # Check hook_event_name if provided (e.g., "SessionStart:clear")
+    hook_event = input_data.get("hook_event_name", "") or input_data.get("hook_event", "")
+    if ":clear" in hook_event.lower():
+        return True
+
+    # Check session_id pattern if available
+    session_id = input_data.get("session_id", "")
+    if session_id and ":clear" in session_id.lower():
+        return True
+
+    return False
+
+
+def should_skip_on_clear(input_data: dict) -> bool:
+    """
+    Check if we should skip this hook on a /clear event.
+
+    Returns True if:
+    1. It's a clear event
+    2. State file exists and is fresh (within last hour)
+    3. State indicates success (org connected)
+    """
+    if not is_clear_event(input_data):
+        return False
+
+    if not STATE_FILE.exists():
+        return False
+
+    try:
+        with open(STATE_FILE, 'r') as f:
+            state = json.load(f)
+
+        # Check freshness (less than 1 hour old)
+        timestamp_str = state.get("timestamp", "")
+        if timestamp_str:
+            timestamp = datetime.fromisoformat(timestamp_str)
+            age = datetime.now() - timestamp
+            if age.total_seconds() > 3600:  # Older than 1 hour
+                return False
+
+        # Check success state (is_valid means no error)
+        if not state.get("is_valid", False):
+            return False
+
+        return True
+    except (json.JSONDecodeError, ValueError, KeyError):
+        return False
+
+
 def main():
     """
     Main entry point for the hook.
@@ -259,12 +315,20 @@ def main():
     This hook is now SILENT - it saves state to a file instead of outputting
     JSON to stdout. The status line reads the state file to display SF org info.
     This avoids JSON validation errors from Claude Code's hook system.
+
+    On /clear events, if valid org state exists, we skip re-checking to prevent
+    status bar flicker (org hasn't changed, auth is still valid).
     """
     # Read input from stdin (SessionStart event)
     try:
         input_data = json.load(sys.stdin)
     except (json.JSONDecodeError, EOFError):
         input_data = {}
+
+    # On /clear: skip if we have fresh, valid state
+    # This prevents status bar from resetting to "Loading..." unnecessarily
+    if should_skip_on_clear(input_data):
+        sys.exit(0)
 
     # Perform preflight check
     org_info = get_org_display()

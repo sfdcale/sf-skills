@@ -77,6 +77,57 @@ def cleanup_old_sessions():
             pass
 
 
+def is_clear_event(input_data: dict) -> bool:
+    """
+    Detect if this is a /clear command (SessionStart:clear) vs fresh session.
+
+    Claude Code passes event type info that we can use to detect /clear.
+    The hook event name includes ':clear' suffix for context clears.
+    """
+    # Check hook_event_name if provided (e.g., "SessionStart:clear")
+    hook_event = input_data.get("hook_event_name", "") or input_data.get("hook_event", "")
+    if ":clear" in hook_event.lower():
+        return True
+
+    # Check session_id pattern if available
+    session_id = input_data.get("session_id", "")
+    if session_id and ":clear" in session_id.lower():
+        return True
+
+    return False
+
+
+def session_state_is_valid(session_dir: Path, pid: int) -> bool:
+    """
+    Check if session state files exist and are valid for this PID.
+
+    Returns True if we can skip re-initialization on /clear.
+    """
+    session_file = session_dir / "session.json"
+    if not session_file.exists():
+        return False
+
+    try:
+        with open(session_file, 'r') as f:
+            existing = json.load(f)
+
+        # Verify PID matches (session is still ours)
+        if existing.get("pid") != pid:
+            return False
+
+        # Check timestamp freshness (within last hour)
+        timestamp_str = existing.get("timestamp", "")
+        if timestamp_str:
+            timestamp = datetime.fromisoformat(timestamp_str)
+            age = datetime.now() - timestamp
+            if age.total_seconds() > 3600:  # Older than 1 hour
+                return False
+
+        return True
+    except (json.JSONDecodeError, ValueError, KeyError):
+        return False
+
+
 def main():
     """
     Main entry point for the hook.
@@ -84,6 +135,9 @@ def main():
     This hook is SYNCHRONOUS and runs FIRST in the SessionStart sequence.
     It must complete before async hooks (org-preflight, lsp-prewarm) run
     so they have a session directory to write to.
+
+    On /clear events, if valid session state exists, we skip re-initialization
+    to prevent status bar flicker (org/LSP state files remain valid).
     """
     # Read input from stdin (SessionStart event data)
     try:
@@ -95,12 +149,19 @@ def main():
     # Note: This hook runs as a child of Claude Code, so getppid() gives us
     # the Claude Code process ID
     pid = os.getppid()
+    session_dir = SESSIONS_DIR / str(pid)
+
+    # On /clear: skip re-initialization if session state is still valid
+    # This prevents status bar from resetting to "Loading..." unnecessarily
+    if is_clear_event(input_data) and session_state_is_valid(session_dir, pid):
+        # Session state is valid, skip re-initialization
+        # Async hooks (org-preflight, lsp-prewarm) will also detect this and skip
+        sys.exit(0)
 
     # Clean up old sessions first (dead PIDs)
     cleanup_old_sessions()
 
     # Create this session's directory
-    session_dir = SESSIONS_DIR / str(pid)
     session_dir.mkdir(parents=True, exist_ok=True)
 
     # Write session marker with timestamp
