@@ -281,6 +281,11 @@ class STDMAnalyzer:
         Useful for debugging agent behavior by seeing the full
         conversation flow.
 
+        Note: This method uses UNION (concat) instead of JOINs to avoid
+        cartesian product explosion. A naive JOIN approach would produce
+        4st² records (where t=turns, s=steps). This UNION approach produces
+        only (moments + steps) records.
+
         Args:
             session_id: Session ID to analyze
 
@@ -348,6 +353,153 @@ class STDMAnalyzer:
         )
 
         return timeline.collect()
+
+    def session_timeline_optimized(self, session_id: str) -> pl.DataFrame:
+        """
+        Reconstruct session timeline with turn structure preserved.
+
+        This optimized method avoids the cartesian product problem that
+        occurs when naively joining Session → Interaction → Message → Step.
+
+        The naive JOIN approach produces 4st² records (where t=turns, s=steps).
+        Example: 2 turns × 5 steps = 80 records instead of 15.
+
+        This method uses UNION ALL (via concat) to combine:
+        1. Messages (input/output per turn)
+        2. Steps (reasoning chain per output)
+
+        Result: (2+s)t+1 records instead of 4st² records.
+
+        Args:
+            session_id: Session ID to analyze
+
+        Returns:
+            Polars DataFrame with structured timeline including:
+            - turn_number: Which turn this event belongs to
+            - event_type: MOMENT, LLM_STEP, ACTION_STEP
+            - timestamp: When the event occurred
+            - content: The request/response/action content
+        """
+        interactions = self.load_interactions()
+        messages = self.load_messages()
+        steps = self.load_steps()
+
+        # Get turns for this session (ordered by timestamp)
+        session_turns = (
+            interactions
+            .filter(
+                (pl.col("ssot__AiAgentSessionId__c") == session_id) &
+                (pl.col("ssot__AiAgentInteractionType__c") == "TURN")
+            )
+            .sort("ssot__StartTimestamp__c")
+            .with_row_index("turn_number")
+            .select([
+                "ssot__Id__c",
+                (pl.col("turn_number") + 1).alias("turn_number"),  # 1-indexed
+            ])
+            .collect()
+        )
+
+        if session_turns.is_empty():
+            return pl.DataFrame({
+                "turn_number": [],
+                "event_order": [],
+                "event_type": [],
+                "timestamp": [],
+                "content": [],
+                "detail": [],
+            })
+
+        turn_ids = session_turns["ssot__Id__c"].to_list()
+        turn_map = dict(zip(
+            session_turns["ssot__Id__c"].to_list(),
+            session_turns["turn_number"].to_list()
+        ))
+
+        # Get moments (user request + agent response summaries)
+        # These are per-session, but we associate with turns by timestamp
+        moments_df = (
+            messages
+            .filter(pl.col("ssot__AiAgentSessionId__c") == session_id)
+            .select([
+                pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                pl.col("ssot__RequestSummaryText__c").alias("request"),
+                pl.col("ssot__ResponseSummaryText__c").alias("response"),
+                pl.col("ssot__AiAgentApiName__c").alias("agent"),
+            ])
+            .collect()
+        )
+
+        # Get steps for this session's turns
+        steps_df = (
+            steps
+            .filter(pl.col("ssot__AiAgentInteractionId__c").is_in(turn_ids))
+            .select([
+                pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
+                pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                pl.col("ssot__AiAgentInteractionStepType__c").alias("step_type"),
+                pl.col("ssot__Name__c").alias("name"),
+                pl.col("ssot__OutputValueText__c").alias("output"),
+            ])
+            .collect()
+        )
+
+        # Build unified timeline
+        timeline_rows = []
+        event_order = 0
+
+        # Process moments (request/response pairs)
+        for row in moments_df.iter_rows(named=True):
+            event_order += 1
+            # Request
+            if row["request"]:
+                timeline_rows.append({
+                    "turn_number": 0,  # Moments span turns
+                    "event_order": event_order,
+                    "event_type": "REQUEST",
+                    "timestamp": row["timestamp"],
+                    "content": row["request"],
+                    "detail": row.get("agent", ""),
+                })
+            event_order += 1
+            # Response
+            if row["response"]:
+                timeline_rows.append({
+                    "turn_number": 0,
+                    "event_order": event_order,
+                    "event_type": "RESPONSE",
+                    "timestamp": row["timestamp"],
+                    "content": row["response"],
+                    "detail": row.get("agent", ""),
+                })
+
+        # Process steps (reasoning chain)
+        for row in steps_df.iter_rows(named=True):
+            event_order += 1
+            turn_num = turn_map.get(row["interaction_id"], 0)
+            timeline_rows.append({
+                "turn_number": turn_num,
+                "event_order": event_order,
+                "event_type": row["step_type"] or "STEP",
+                "timestamp": row["timestamp"],
+                "content": row["name"] or "",
+                "detail": (row["output"] or "")[:200],  # Truncate for display
+            })
+
+        if not timeline_rows:
+            return pl.DataFrame({
+                "turn_number": [],
+                "event_order": [],
+                "event_type": [],
+                "timestamp": [],
+                "content": [],
+                "detail": [],
+            })
+
+        # Create DataFrame and sort by timestamp
+        result = pl.DataFrame(timeline_rows).sort("timestamp")
+
+        return result
 
     def end_type_distribution(self) -> pl.DataFrame:
         """
@@ -465,6 +617,102 @@ class STDMAnalyzer:
         except Exception as e:
             console.print(f"[yellow]Could not load topic analysis: {e}[/yellow]")
 
+    def find_hallucinations(self, limit: int = 100) -> pl.DataFrame:
+        """
+        Find responses flagged as potentially ungrounded (hallucinations).
+
+        Searches AIAgentInteractionStep for ReactValidationPrompt steps
+        where the output contains 'UNGROUNDED', indicating the agent's
+        response was not supported by grounded context.
+
+        Args:
+            limit: Maximum number of results to return
+
+        Returns:
+            Polars DataFrame with columns:
+            - session_id: The session where hallucination occurred
+            - interaction_id: The specific turn
+            - step_id: The validation step ID
+            - step_name: Step name (should be ReactValidationPrompt)
+            - output_text: The validation output showing UNGROUNDED
+            - timestamp: When the step occurred
+        """
+        steps = self.load_steps()
+        interactions = self.load_interactions()
+
+        # Find ReactValidationPrompt steps with UNGROUNDED in output
+        hallucinations = (
+            steps
+            .filter(
+                (pl.col("ssot__Name__c").str.contains("ReactValidationPrompt", literal=True)) &
+                (pl.col("ssot__OutputValueText__c").str.contains("UNGROUNDED", literal=True))
+            )
+            .join(
+                interactions.select(["ssot__Id__c", "ssot__AiAgentSessionId__c"]),
+                left_on="ssot__AiAgentInteractionId__c",
+                right_on="ssot__Id__c",
+                how="left"
+            )
+            .select([
+                pl.col("ssot__AiAgentSessionId__c").alias("session_id"),
+                pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
+                pl.col("ssot__Id__c").alias("step_id"),
+                pl.col("ssot__Name__c").alias("step_name"),
+                pl.col("ssot__OutputValueText__c").alias("output_text"),
+                pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+            ])
+            .sort("timestamp", descending=True)
+            .head(limit)
+        )
+
+        return hallucinations.collect()
+
+    def hallucination_summary(self) -> pl.DataFrame:
+        """
+        Get summary statistics for hallucination occurrences.
+
+        Returns:
+            Polars DataFrame with:
+            - total_hallucinations: Count of UNGROUNDED responses
+            - affected_sessions: Number of unique sessions with hallucinations
+            - percentage_of_sessions: % of all sessions with hallucinations
+        """
+        steps = self.load_steps()
+        sessions = self.load_sessions()
+        interactions = self.load_interactions()
+
+        # Count hallucinations
+        hallucination_steps = steps.filter(
+            (pl.col("ssot__Name__c").str.contains("ReactValidationPrompt", literal=True)) &
+            (pl.col("ssot__OutputValueText__c").str.contains("UNGROUNDED", literal=True))
+        )
+
+        # Join to get session IDs
+        hallucination_sessions = (
+            hallucination_steps
+            .join(
+                interactions.select(["ssot__Id__c", "ssot__AiAgentSessionId__c"]),
+                left_on="ssot__AiAgentInteractionId__c",
+                right_on="ssot__Id__c",
+                how="left"
+            )
+            .select("ssot__AiAgentSessionId__c")
+            .unique()
+        )
+
+        total_hallucinations = hallucination_steps.select(pl.count()).collect().item()
+        affected_sessions = hallucination_sessions.select(pl.count()).collect().item()
+        total_sessions = sessions.select(pl.count()).collect().item()
+
+        percentage = (affected_sessions / total_sessions * 100) if total_sessions > 0 else 0
+
+        return pl.DataFrame({
+            "total_hallucinations": [total_hallucinations],
+            "affected_sessions": [affected_sessions],
+            "total_sessions": [total_sessions],
+            "percentage_of_sessions": [round(percentage, 2)],
+        })
+
     def print_session_debug(self, session_id: str):
         """Print detailed debug view for a session."""
         console.print(f"\n[bold cyan]🔍 SESSION DEBUG: {session_id}[/bold cyan]")
@@ -519,3 +767,468 @@ class STDMAnalyzer:
 
         except Exception as e:
             console.print(f"[red]Error: {e}[/red]")
+
+    # =========================================================================
+    # Quality Analysis Methods
+    # =========================================================================
+
+    def load_generations(self) -> pl.LazyFrame:
+        """
+        Load generations as lazy frame.
+
+        Returns:
+            Polars LazyFrame for GenAIGeneration records
+        """
+        path = self._get_parquet_path("generations")
+        return pl.scan_parquet(path)
+
+    def load_content_quality(self) -> pl.LazyFrame:
+        """
+        Load content quality as lazy frame.
+
+        Returns:
+            Polars LazyFrame for GenAIContentQuality records
+        """
+        path = self._get_parquet_path("content_quality")
+        return pl.scan_parquet(path)
+
+    def load_content_categories(self) -> pl.LazyFrame:
+        """
+        Load content categories as lazy frame.
+
+        Returns:
+            Polars LazyFrame for GenAIContentCategory records
+        """
+        path = self._get_parquet_path("content_categories")
+        return pl.scan_parquet(path)
+
+    def find_toxic_responses(self, limit: int = 100) -> pl.DataFrame:
+        """
+        Find responses flagged for toxicity.
+
+        Searches GenAIContentQuality for records where:
+        - isToxicityDetected = 'true'
+        - (optionally) toxicityScore >= 0.5
+
+        Joins back to Steps and Interactions to get session context.
+
+        Args:
+            limit: Maximum number of results to return
+
+        Returns:
+            Polars DataFrame with toxic response details
+        """
+        try:
+            quality = self.load_content_quality()
+            categories = self.load_content_categories()
+            steps = self.load_steps()
+            interactions = self.load_interactions()
+        except FileNotFoundError:
+            return pl.DataFrame({
+                "generation_id": [],
+                "session_id": [],
+                "interaction_id": [],
+                "is_toxic": [],
+                "toxicity_score": [],
+                "timestamp": [],
+            })
+
+        # Find toxic content quality records
+        toxic_records = (
+            quality
+            .filter(pl.col("isToxicityDetected__c") == "true")
+            .select([
+                pl.col("parent__c").alias("generation_id"),
+                pl.col("isToxicityDetected__c").alias("is_toxic"),
+                pl.col("toxicityScore__c").alias("toxicity_score"),
+            ])
+        )
+
+        # Also check categories for toxicity with high confidence
+        toxic_categories = (
+            categories
+            .filter(
+                (pl.col("detectorType__c") == "Toxicity") &
+                (pl.col("value__c") >= 0.5)
+            )
+            .select([
+                pl.col("parent__c").alias("generation_id"),
+                pl.lit("true").alias("is_toxic"),
+                pl.col("value__c").alias("toxicity_score"),
+            ])
+        )
+
+        # Combine both sources
+        all_toxic = pl.concat([toxic_records, toxic_categories]).unique()
+
+        # Join to steps to get interaction context
+        result = (
+            all_toxic
+            .join(
+                steps.select([
+                    pl.col("ssot__GenerationId__c"),
+                    pl.col("ssot__AiAgentInteractionId__c"),
+                    pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                ]),
+                left_on="generation_id",
+                right_on="ssot__GenerationId__c",
+                how="left"
+            )
+            .join(
+                interactions.select([
+                    pl.col("ssot__Id__c"),
+                    pl.col("ssot__AiAgentSessionId__c").alias("session_id"),
+                ]),
+                left_on="ssot__AiAgentInteractionId__c",
+                right_on="ssot__Id__c",
+                how="left"
+            )
+            .select([
+                "generation_id",
+                "session_id",
+                pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
+                "is_toxic",
+                "toxicity_score",
+                "timestamp",
+            ])
+            .sort("timestamp", descending=True)
+            .head(limit)
+        )
+
+        return result.collect()
+
+    def find_low_instruction_adherence(self, limit: int = 100) -> pl.DataFrame:
+        """
+        Find responses with low instruction adherence.
+
+        Searches GenAIContentCategory for records where:
+        - detectorType = 'InstructionAdherence'
+        - category = 'Low'
+
+        Args:
+            limit: Maximum number of results to return
+
+        Returns:
+            Polars DataFrame with low adherence details
+        """
+        try:
+            categories = self.load_content_categories()
+            steps = self.load_steps()
+            interactions = self.load_interactions()
+        except FileNotFoundError:
+            return pl.DataFrame({
+                "generation_id": [],
+                "session_id": [],
+                "interaction_id": [],
+                "category": [],
+                "confidence": [],
+                "timestamp": [],
+            })
+
+        low_adherence = (
+            categories
+            .filter(
+                (pl.col("detectorType__c") == "InstructionAdherence") &
+                (pl.col("category__c") == "Low")
+            )
+            .select([
+                pl.col("parent__c").alias("generation_id"),
+                pl.col("category__c").alias("category"),
+                pl.col("value__c").alias("confidence"),
+            ])
+        )
+
+        # Join to get context
+        result = (
+            low_adherence
+            .join(
+                steps.select([
+                    pl.col("ssot__GenerationId__c"),
+                    pl.col("ssot__AiAgentInteractionId__c"),
+                    pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                ]),
+                left_on="generation_id",
+                right_on="ssot__GenerationId__c",
+                how="left"
+            )
+            .join(
+                interactions.select([
+                    pl.col("ssot__Id__c"),
+                    pl.col("ssot__AiAgentSessionId__c").alias("session_id"),
+                ]),
+                left_on="ssot__AiAgentInteractionId__c",
+                right_on="ssot__Id__c",
+                how="left"
+            )
+            .select([
+                "generation_id",
+                "session_id",
+                pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
+                "category",
+                "confidence",
+                "timestamp",
+            ])
+            .sort("timestamp", descending=True)
+            .head(limit)
+        )
+
+        return result.collect()
+
+    def find_unresolved_tasks(self, limit: int = 100) -> pl.DataFrame:
+        """
+        Find sessions where tasks weren't fully resolved.
+
+        Searches GenAIContentCategory for records where:
+        - detectorType = 'TaskResolution'
+        - category != 'FULLY_RESOLVED'
+
+        Args:
+            limit: Maximum number of results to return
+
+        Returns:
+            Polars DataFrame with unresolved task details
+        """
+        try:
+            categories = self.load_content_categories()
+            steps = self.load_steps()
+            interactions = self.load_interactions()
+        except FileNotFoundError:
+            return pl.DataFrame({
+                "generation_id": [],
+                "session_id": [],
+                "interaction_id": [],
+                "resolution_status": [],
+                "confidence": [],
+                "timestamp": [],
+            })
+
+        unresolved = (
+            categories
+            .filter(
+                (pl.col("detectorType__c") == "TaskResolution") &
+                (pl.col("category__c") != "FULLY_RESOLVED")
+            )
+            .select([
+                pl.col("parent__c").alias("generation_id"),
+                pl.col("category__c").alias("resolution_status"),
+                pl.col("value__c").alias("confidence"),
+            ])
+        )
+
+        # Join to get context
+        result = (
+            unresolved
+            .join(
+                steps.select([
+                    pl.col("ssot__GenerationId__c"),
+                    pl.col("ssot__AiAgentInteractionId__c"),
+                    pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                ]),
+                left_on="generation_id",
+                right_on="ssot__GenerationId__c",
+                how="left"
+            )
+            .join(
+                interactions.select([
+                    pl.col("ssot__Id__c"),
+                    pl.col("ssot__AiAgentSessionId__c").alias("session_id"),
+                ]),
+                left_on="ssot__AiAgentInteractionId__c",
+                right_on="ssot__Id__c",
+                how="left"
+            )
+            .select([
+                "generation_id",
+                "session_id",
+                pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
+                "resolution_status",
+                "confidence",
+                "timestamp",
+            ])
+            .sort("timestamp", descending=True)
+            .head(limit)
+        )
+
+        return result.collect()
+
+    def quality_report(self) -> Dict[str, Any]:
+        """
+        Generate comprehensive quality report.
+
+        Returns a dictionary with quality metrics:
+        - hallucinations: Count and percentage
+        - toxicity: Count from quality DMOs
+        - instruction_adherence: Low adherence count
+        - task_resolution: Unresolved task count
+
+        Returns:
+            Dictionary with quality metrics
+        """
+        report = {
+            "hallucinations": {},
+            "toxicity": {},
+            "instruction_adherence": {},
+            "task_resolution": {},
+        }
+
+        # Hallucinations (always available from steps)
+        try:
+            hall_summary = self.hallucination_summary()
+            row = hall_summary.row(0, named=True)
+            report["hallucinations"] = {
+                "count": row["total_hallucinations"],
+                "affected_sessions": row["affected_sessions"],
+                "percentage": row["percentage_of_sessions"],
+            }
+        except Exception:
+            report["hallucinations"] = {"error": "Could not analyze hallucinations"}
+
+        # Quality DMO metrics (require extract-quality)
+        try:
+            toxic = self.find_toxic_responses(limit=10000)
+            report["toxicity"] = {
+                "count": len(toxic),
+                "affected_sessions": toxic["session_id"].n_unique() if not toxic.is_empty() else 0,
+            }
+        except Exception:
+            report["toxicity"] = {"count": 0, "note": "Run extract-quality to get toxicity data"}
+
+        try:
+            low_adh = self.find_low_instruction_adherence(limit=10000)
+            report["instruction_adherence"] = {
+                "low_count": len(low_adh),
+                "affected_sessions": low_adh["session_id"].n_unique() if not low_adh.is_empty() else 0,
+            }
+        except Exception:
+            report["instruction_adherence"] = {"count": 0, "note": "Run extract-quality to get adherence data"}
+
+        try:
+            unresolved = self.find_unresolved_tasks(limit=10000)
+            report["task_resolution"] = {
+                "unresolved_count": len(unresolved),
+                "affected_sessions": unresolved["session_id"].n_unique() if not unresolved.is_empty() else 0,
+            }
+        except Exception:
+            report["task_resolution"] = {"count": 0, "note": "Run extract-quality to get resolution data"}
+
+        return report
+
+    def generate_moment_url(
+        self,
+        moment_id: str,
+        session_id: str,
+        agent_name: str,
+        title: str,
+        time_filter: int = 7,
+    ) -> str:
+        """
+        Generate partial URL to Moment Detail page in Salesforce.
+
+        Note: This generates a relative URL. Prepend with your org's
+        instance URL to get the full URL.
+
+        Args:
+            moment_id: The moment record ID
+            session_id: The session record ID
+            agent_name: Agent API name
+            title: Request summary text (will be URL encoded)
+            time_filter: Time filter value (default: 7 days)
+
+        Returns:
+            Relative URL path to the moment detail page
+        """
+        from urllib.parse import quote
+
+        encoded_title = quote(title or "", safe="")
+
+        return (
+            f"/lightning/cmp/runtime_analytics_evf_aie__record?"
+            f"c__id={moment_id}&"
+            f"c__type=2&"
+            f"c__sessionId={session_id}&"
+            f"c__timeFilter={time_filter}&"
+            f"c__agentApiName={agent_name}&"
+            f"c__title={encoded_title}"
+        )
+
+    def get_moment_urls(self, session_id: str) -> pl.DataFrame:
+        """
+        Generate moment detail URLs for a specific session.
+
+        Args:
+            session_id: Session ID to get moment URLs for
+
+        Returns:
+            Polars DataFrame with moment IDs and their URLs
+        """
+        messages = self.load_messages()
+
+        moments = (
+            messages
+            .filter(pl.col("ssot__AiAgentSessionId__c") == session_id)
+            .select([
+                pl.col("ssot__Id__c").alias("moment_id"),
+                pl.col("ssot__AiAgentSessionId__c").alias("session_id"),
+                pl.col("ssot__AiAgentApiName__c").alias("agent_name"),
+                pl.col("ssot__RequestSummaryText__c").alias("request_summary"),
+                pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+            ])
+            .collect()
+        )
+
+        # Generate URLs for each moment
+        urls = []
+        for row in moments.iter_rows(named=True):
+            url = self.generate_moment_url(
+                moment_id=row["moment_id"],
+                session_id=row["session_id"],
+                agent_name=row.get("agent_name") or "",
+                title=row.get("request_summary") or "",
+            )
+            urls.append(url)
+
+        return moments.with_columns(pl.Series("url", urls))
+
+    def print_quality_report(self):
+        """Print quality report to console."""
+        console.print("\n[bold cyan]📊 QUALITY REPORT[/bold cyan]")
+        console.print("═" * 60)
+
+        report = self.quality_report()
+
+        # Hallucinations
+        hall = report.get("hallucinations", {})
+        if "error" not in hall:
+            console.print("\n[bold]🔮 Hallucinations (UNGROUNDED responses)[/bold]")
+            console.print(f"  Total: [yellow]{hall.get('count', 0)}[/yellow]")
+            console.print(f"  Affected sessions: {hall.get('affected_sessions', 0)}")
+            console.print(f"  Session percentage: {hall.get('percentage', 0)}%")
+        else:
+            console.print(f"\n[yellow]{hall['error']}[/yellow]")
+
+        # Toxicity
+        tox = report.get("toxicity", {})
+        console.print("\n[bold]☠️ Toxicity[/bold]")
+        if "note" in tox:
+            console.print(f"  [dim]{tox['note']}[/dim]")
+        else:
+            console.print(f"  Total: [red]{tox.get('count', 0)}[/red]")
+            console.print(f"  Affected sessions: {tox.get('affected_sessions', 0)}")
+
+        # Instruction Adherence
+        adh = report.get("instruction_adherence", {})
+        console.print("\n[bold]📋 Instruction Adherence[/bold]")
+        if "note" in adh:
+            console.print(f"  [dim]{adh['note']}[/dim]")
+        else:
+            console.print(f"  Low adherence: [yellow]{adh.get('low_count', 0)}[/yellow]")
+            console.print(f"  Affected sessions: {adh.get('affected_sessions', 0)}")
+
+        # Task Resolution
+        res = report.get("task_resolution", {})
+        console.print("\n[bold]✅ Task Resolution[/bold]")
+        if "note" in res:
+            console.print(f"  [dim]{res['note']}[/dim]")
+        else:
+            console.print(f"  Unresolved: [yellow]{res.get('unresolved_count', 0)}[/yellow]")
+            console.print(f"  Affected sessions: {res.get('affected_sessions', 0)}")

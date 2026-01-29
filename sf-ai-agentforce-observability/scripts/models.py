@@ -180,6 +180,94 @@ class AIAgentMoment(BaseModel):
 
 
 # ============================================================================
+# Quality DMO Models (GenAI Content Quality)
+# ============================================================================
+
+class GenAIGeneration(BaseModel):
+    """
+    LLM generation record from ssot__GenAIGeneration__dlm.
+
+    Represents a single LLM response. Linked from AIAgentInteractionStep
+    via ssot__GenerationId__c.
+
+    Attributes:
+        generation_id: Unique generation identifier (PK)
+        response_text: The generated response text
+        model_name: Name of the LLM model used
+        prompt_text: The prompt sent to the LLM
+        start_timestamp: When generation started
+        end_timestamp: When generation completed
+        organization_id: Salesforce org ID
+    """
+
+    generation_id: str = Field(alias="generationId__c")
+    response_text: Optional[str] = Field(default=None, alias="responseText__c")
+    model_name: Optional[str] = Field(default=None, alias="modelName__c")
+    prompt_text: Optional[str] = Field(default=None, alias="promptText__c")
+    start_timestamp: Optional[str] = Field(default=None, alias="startTimestamp__c")
+    end_timestamp: Optional[str] = Field(default=None, alias="endTimestamp__c")
+    organization_id: Optional[str] = Field(default=None, alias="internalOrganizationId__c")
+
+    class Config:
+        populate_by_name = True
+
+
+class GenAIContentQuality(BaseModel):
+    """
+    Quality assessment record from ssot__GenAIContentQuality__dlm.
+
+    Contains toxicity detection results for a generation.
+
+    Attributes:
+        id: Unique quality record identifier
+        parent_id: Foreign key to GenAIGeneration (generationId__c)
+        is_toxicity_detected: Whether toxicity was detected ('true'/'false')
+        toxicity_score: Toxicity confidence score (0.0 - 1.0)
+        organization_id: Salesforce org ID
+    """
+
+    id: str = Field(alias="id__c")
+    parent_id: str = Field(alias="parent__c")
+    is_toxicity_detected: Optional[str] = Field(default=None, alias="isToxicityDetected__c")
+    toxicity_score: Optional[float] = Field(default=None, alias="toxicityScore__c")
+    organization_id: Optional[str] = Field(default=None, alias="internalOrganizationId__c")
+
+    class Config:
+        populate_by_name = True
+
+
+class GenAIContentCategory(BaseModel):
+    """
+    Categorization record from ssot__GenAIContentCategory__dlm.
+
+    Contains detector results (instruction adherence, task resolution, etc.)
+
+    Detector types and their categories:
+    - Toxicity: value >= 0.5 indicates toxic content
+    - InstructionAdherence: 'Low', 'Medium', 'High'
+    - TaskResolution: 'FULLY_RESOLVED', 'PARTIALLY_RESOLVED', 'NOT_RESOLVED'
+
+    Attributes:
+        id: Unique category record identifier
+        parent_id: Foreign key to GenAIContentQuality or GenAIGeneration
+        detector_type: Type of detector (Toxicity, InstructionAdherence, TaskResolution)
+        category: Detection category result
+        value: Confidence score (0.0 - 1.0)
+        organization_id: Salesforce org ID
+    """
+
+    id: str = Field(alias="id__c")
+    parent_id: str = Field(alias="parent__c")
+    detector_type: Optional[str] = Field(default=None, alias="detectorType__c")
+    category: Optional[str] = Field(default=None, alias="category__c")
+    value: Optional[float] = Field(default=None, alias="value__c")
+    organization_id: Optional[str] = Field(default=None, alias="internalOrganizationId__c")
+
+    class Config:
+        populate_by_name = True
+
+
+# ============================================================================
 # PyArrow Schemas (updated for v65.0)
 # ============================================================================
 
@@ -250,12 +338,48 @@ MESSAGE_SCHEMA = pa.schema([
 ])
 
 
+# ============================================================================
+# Quality DMO Schemas (GenAI Content Quality)
+# ============================================================================
+
+GENERATION_SCHEMA = pa.schema([
+    pa.field("generationId__c", pa.string(), nullable=False),
+    pa.field("responseText__c", pa.string(), nullable=True),
+    pa.field("modelName__c", pa.string(), nullable=True),
+    pa.field("promptText__c", pa.string(), nullable=True),
+    pa.field("startTimestamp__c", pa.string(), nullable=True),
+    pa.field("endTimestamp__c", pa.string(), nullable=True),
+    pa.field("internalOrganizationId__c", pa.string(), nullable=True),
+])
+
+CONTENT_QUALITY_SCHEMA = pa.schema([
+    pa.field("id__c", pa.string(), nullable=False),
+    pa.field("parent__c", pa.string(), nullable=False),
+    pa.field("isToxicityDetected__c", pa.string(), nullable=True),
+    pa.field("toxicityScore__c", pa.float64(), nullable=True),
+    pa.field("internalOrganizationId__c", pa.string(), nullable=True),
+])
+
+CONTENT_CATEGORY_SCHEMA = pa.schema([
+    pa.field("id__c", pa.string(), nullable=False),
+    pa.field("parent__c", pa.string(), nullable=False),
+    pa.field("detectorType__c", pa.string(), nullable=True),
+    pa.field("category__c", pa.string(), nullable=True),
+    pa.field("value__c", pa.float64(), nullable=True),
+    pa.field("internalOrganizationId__c", pa.string(), nullable=True),
+])
+
+
 # Schema registry for easy access
 SCHEMAS = {
     "sessions": SESSION_SCHEMA,
     "interactions": INTERACTION_SCHEMA,
     "steps": STEP_SCHEMA,
     "messages": MESSAGE_SCHEMA,
+    # Quality DMOs
+    "generations": GENERATION_SCHEMA,
+    "content_quality": CONTENT_QUALITY_SCHEMA,
+    "content_categories": CONTENT_CATEGORY_SCHEMA,
 }
 
 # DMO name mapping
@@ -264,6 +388,10 @@ DMO_NAMES = {
     "interactions": "ssot__AIAgentInteraction__dlm",
     "steps": "ssot__AIAgentInteractionStep__dlm",
     "messages": "ssot__AIAgentMoment__dlm",
+    # Quality DMOs
+    "generations": "ssot__GenAIGeneration__dlm",
+    "content_quality": "ssot__GenAIContentQuality__dlm",
+    "content_categories": "ssot__GenAIContentCategory__dlm",
 }
 
 # Model class mapping
@@ -272,6 +400,10 @@ MODELS = {
     "interactions": AIAgentInteraction,
     "steps": AIAgentInteractionStep,
     "messages": AIAgentMoment,
+    # Quality DMOs
+    "generations": GenAIGeneration,
+    "content_quality": GenAIContentQuality,
+    "content_categories": GenAIContentCategory,
 }
 
 

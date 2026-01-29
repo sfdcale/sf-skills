@@ -47,32 +47,27 @@ def get_auth(org_alias: str, consumer_key: Optional[str] = None, key_path: Optio
     1. Explicit key_path argument
     2. App-specific: ~/.sf/jwt/{org_alias}-agentforce-observability.key
     3. Generic fallback: ~/.sf/jwt/{org_alias}.key
+
+    Consumer key resolution (in order):
+    1. Explicit consumer_key argument
+    2. File: ~/.sf/jwt/{org_alias}-agentforce-observability.consumer-key
+    3. File: ~/.sf/jwt/{org_alias}.consumer-key
+    4. Env: SF_{ORG_ALIAS}_CONSUMER_KEY
+    5. Env: SF_CONSUMER_KEY
     """
-    from scripts.auth import DataCloudAuth, get_auth_from_env
+    from scripts.auth import Data360Auth
 
     # Convert key_path to Path if provided
     resolved_key_path = Path(key_path).expanduser() if key_path else None
 
-    if consumer_key:
-        return DataCloudAuth(
+    try:
+        return Data360Auth(
             org_alias=org_alias,
-            consumer_key=consumer_key,
+            consumer_key=consumer_key,  # None triggers auto-loading
             key_path=resolved_key_path
         )
-
-    # Try environment variable
-    try:
-        auth = get_auth_from_env(org_alias)
-        # Override key_path if explicitly provided
-        if resolved_key_path:
-            auth.key_path = resolved_key_path
-        return auth
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
-        console.print("\nTo configure authentication:")
-        console.print("  1. Set SF_CONSUMER_KEY environment variable")
-        console.print(f"  2. Or set SF_{org_alias.upper()}_CONSUMER_KEY")
-        console.print("  3. Or pass --consumer-key argument")
         raise click.Abort()
 
 
@@ -235,6 +230,72 @@ def extract_tree(
         console.print("")
         extractor.print_summary(result)
 
+    except Exception as e:
+        console.print(f"\n[red]Error: {e}[/red]")
+        if verbose:
+            import traceback
+            console.print(traceback.format_exc())
+        sys.exit(1)
+
+
+@cli.command("extract-quality")
+@click.option("--org", required=True, help="Salesforce org alias")
+@click.option("--consumer-key", help="External Client App consumer key")
+@click.option("--key-path", type=click.Path(), help="Path to JWT private key")
+@click.option("--data-dir", type=click.Path(exists=True), required=True, help="Data directory with extracted steps")
+@click.option("--verbose", is_flag=True, help="Show detailed progress")
+def extract_quality(
+    org: str,
+    consumer_key: Optional[str],
+    key_path: Optional[str],
+    data_dir: str,
+    verbose: bool,
+):
+    """
+    Extract quality DMOs based on existing step data.
+
+    This command extracts GenAI quality assessment data:
+    - GenAIGeneration: LLM response records
+    - GenAIContentQuality: Toxicity detection results
+    - GenAIContentCategory: Instruction adherence, task resolution
+
+    Prerequisites: Run extract or extract-tree first to get steps.
+
+    Examples:
+
+        # Extract quality data for existing extraction
+        stdm-extract extract-quality --org prod --data-dir ./stdm_data
+    """
+    from scripts.datacloud_client import DataCloudClient
+    from scripts.extractor import STDMExtractor
+
+    auth = get_auth(org, consumer_key, key_path)
+
+    console.print(f"\n[bold cyan]📊 Quality DMO Extraction[/bold cyan]")
+    console.print(f"Data dir: {data_dir}")
+    console.print("")
+
+    try:
+        # Test connection
+        console.print("[dim]Testing connection...[/dim]")
+        auth.test_connection()
+        console.print("[green]✓ Connected to Data Cloud[/green]\n")
+
+        client = DataCloudClient(auth)
+        extractor = STDMExtractor(client, Path(data_dir))
+
+        result = extractor.extract_quality(show_progress=True)
+
+        console.print("")
+        extractor.print_quality_summary(result)
+
+        if result.errors:
+            sys.exit(1)
+
+    except FileNotFoundError as e:
+        console.print(f"\n[red]Error: {e}[/red]")
+        console.print("[dim]Make sure to run extract first to get step data.[/dim]")
+        sys.exit(1)
     except Exception as e:
         console.print(f"\n[red]Error: {e}[/red]")
         if verbose:
@@ -485,6 +546,274 @@ def count(org: str, consumer_key: Optional[str], key_path: Optional[str], entity
         console.print(f"Period: Last {days} days")
         console.print(f"Count: [green]{record_count:,}[/green]")
 
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        sys.exit(1)
+
+
+@cli.command("quality-report")
+@click.option("--data-dir", type=click.Path(exists=True), required=True, help="Data directory")
+@click.option("--format", "output_format", type=click.Choice(["table", "json"]), default="table")
+def quality_report(data_dir: str, output_format: str):
+    """
+    Generate comprehensive quality report.
+
+    Analyzes all quality metrics:
+    - Hallucinations (UNGROUNDED responses)
+    - Toxicity (from quality DMOs)
+    - Instruction adherence
+    - Task resolution
+
+    Note: Full quality analysis requires running extract-quality first.
+    Hallucination analysis works with basic extraction data.
+
+    Examples:
+
+        stdm-extract quality-report --data-dir ./stdm_data
+        stdm-extract quality-report --data-dir ./stdm_data --format json
+    """
+    from scripts.analyzer import STDMAnalyzer
+
+    try:
+        analyzer = STDMAnalyzer(Path(data_dir))
+
+        if output_format == "table":
+            analyzer.print_quality_report()
+        else:
+            import json
+            report = analyzer.quality_report()
+            console.print(json.dumps(report, indent=2))
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        sys.exit(1)
+
+
+@cli.command("find-toxic")
+@click.option("--data-dir", type=click.Path(exists=True), required=True, help="Data directory")
+@click.option("--limit", default=100, help="Maximum results to return")
+@click.option("--format", "output_format", type=click.Choice(["table", "json", "csv"]), default="table")
+def find_toxic(data_dir: str, limit: int, output_format: str):
+    """
+    Find responses flagged for toxicity.
+
+    Requires quality DMOs to be extracted first (run extract-quality).
+
+    Examples:
+
+        stdm-extract find-toxic --data-dir ./stdm_data
+    """
+    from scripts.analyzer import STDMAnalyzer
+
+    try:
+        analyzer = STDMAnalyzer(Path(data_dir))
+        toxic = analyzer.find_toxic_responses(limit=limit)
+
+        if toxic.is_empty():
+            console.print("[green]✓ No toxic responses found[/green]")
+            return
+
+        console.print(f"\n[bold red]☠️ TOXIC RESPONSES ({len(toxic)} found)[/bold red]")
+        console.print("═" * 60)
+
+        if output_format == "table":
+            table = Table()
+            table.add_column("Session ID", style="cyan", max_width=36)
+            table.add_column("Score", justify="right")
+            table.add_column("Timestamp", max_width=19)
+
+            for row in toxic.iter_rows(named=True):
+                session_id = str(row.get("session_id", ""))[:36]
+                score = row.get("toxicity_score")
+                score_str = f"{score:.2f}" if score else "N/A"
+                timestamp = (row.get("timestamp") or "")[:19]
+
+                table.add_row(session_id, score_str, timestamp)
+
+            console.print(table)
+        elif output_format == "json":
+            import json
+            console.print(json.dumps(toxic.to_dicts(), indent=2))
+        elif output_format == "csv":
+            console.print(toxic.write_csv())
+
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        console.print("[dim]Run extract-quality first to get toxicity data.[/dim]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        sys.exit(1)
+
+
+@cli.command("find-unresolved")
+@click.option("--data-dir", type=click.Path(exists=True), required=True, help="Data directory")
+@click.option("--limit", default=100, help="Maximum results to return")
+@click.option("--format", "output_format", type=click.Choice(["table", "json", "csv"]), default="table")
+def find_unresolved(data_dir: str, limit: int, output_format: str):
+    """
+    Find sessions where tasks weren't fully resolved.
+
+    Requires quality DMOs to be extracted first (run extract-quality).
+
+    Examples:
+
+        stdm-extract find-unresolved --data-dir ./stdm_data
+    """
+    from scripts.analyzer import STDMAnalyzer
+
+    try:
+        analyzer = STDMAnalyzer(Path(data_dir))
+        unresolved = analyzer.find_unresolved_tasks(limit=limit)
+
+        if unresolved.is_empty():
+            console.print("[green]✓ All tasks fully resolved[/green]")
+            return
+
+        console.print(f"\n[bold yellow]⚠️ UNRESOLVED TASKS ({len(unresolved)} found)[/bold yellow]")
+        console.print("═" * 60)
+
+        if output_format == "table":
+            table = Table()
+            table.add_column("Session ID", style="cyan", max_width=36)
+            table.add_column("Status", style="yellow")
+            table.add_column("Confidence", justify="right")
+            table.add_column("Timestamp", max_width=19)
+
+            for row in unresolved.iter_rows(named=True):
+                session_id = str(row.get("session_id", ""))[:36]
+                status = row.get("resolution_status", "UNKNOWN")
+                conf = row.get("confidence")
+                conf_str = f"{conf:.2f}" if conf else "N/A"
+                timestamp = (row.get("timestamp") or "")[:19]
+
+                table.add_row(session_id, status, conf_str, timestamp)
+
+            console.print(table)
+        elif output_format == "json":
+            import json
+            console.print(json.dumps(unresolved.to_dicts(), indent=2))
+        elif output_format == "csv":
+            console.print(unresolved.write_csv())
+
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        console.print("[dim]Run extract-quality first to get resolution data.[/dim]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        sys.exit(1)
+
+
+@cli.command("moment-urls")
+@click.option("--data-dir", type=click.Path(exists=True), required=True, help="Data directory")
+@click.option("--session-id", required=True, help="Session ID to get moment URLs for")
+def moment_urls(data_dir: str, session_id: str):
+    """
+    Generate moment detail URLs for a specific session.
+
+    Generates partial URLs that can be appended to your org's
+    instance URL to navigate directly to moment details.
+
+    Examples:
+
+        stdm-extract moment-urls --data-dir ./stdm_data --session-id "abc-123"
+    """
+    from scripts.analyzer import STDMAnalyzer
+
+    try:
+        analyzer = STDMAnalyzer(Path(data_dir))
+        urls = analyzer.get_moment_urls(session_id)
+
+        if urls.is_empty():
+            console.print(f"[yellow]No moments found for session: {session_id}[/yellow]")
+            return
+
+        console.print(f"\n[bold cyan]🔗 MOMENT URLS for {session_id}[/bold cyan]")
+        console.print("═" * 60)
+        console.print("[dim]Append these paths to your org's instance URL[/dim]\n")
+
+        for row in urls.iter_rows(named=True):
+            timestamp = (row.get("timestamp") or "")[:19]
+            request = (row.get("request_summary") or "")[:50]
+            url = row.get("url", "")
+
+            console.print(f"[cyan]{timestamp}[/cyan]")
+            console.print(f"  {request}...")
+            console.print(f"  [dim]{url}[/dim]\n")
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        sys.exit(1)
+
+
+@cli.command("find-hallucinations")
+@click.option("--data-dir", type=click.Path(exists=True), required=True, help="Data directory")
+@click.option("--limit", default=100, help="Maximum results to return")
+@click.option("--format", "output_format", type=click.Choice(["table", "json", "csv"]), default="table")
+def find_hallucinations(data_dir: str, limit: int, output_format: str):
+    """
+    Find responses flagged as potentially ungrounded (hallucinations).
+
+    Searches for ReactValidationPrompt steps where the LLM output
+    was flagged as UNGROUNDED, indicating the response wasn't
+    supported by retrieved context.
+
+    Examples:
+
+        stdm-extract find-hallucinations --data-dir ./stdm_data
+        stdm-extract find-hallucinations --data-dir ./stdm_data --limit 50
+    """
+    from scripts.analyzer import STDMAnalyzer
+
+    try:
+        analyzer = STDMAnalyzer(Path(data_dir))
+
+        # Get summary first
+        summary = analyzer.hallucination_summary()
+        summary_row = summary.row(0, named=True)
+
+        console.print(f"\n[bold cyan]🔍 HALLUCINATION ANALYSIS[/bold cyan]")
+        console.print("═" * 60)
+        console.print(f"Total hallucinations: [yellow]{summary_row['total_hallucinations']}[/yellow]")
+        console.print(f"Affected sessions: [yellow]{summary_row['affected_sessions']}[/yellow] / {summary_row['total_sessions']}")
+        console.print(f"Session percentage: [yellow]{summary_row['percentage_of_sessions']}%[/yellow]")
+        console.print("")
+
+        # Get detailed results
+        hallucinations = analyzer.find_hallucinations(limit=limit)
+
+        if hallucinations.is_empty():
+            console.print("[green]✓ No hallucinations found[/green]")
+            return
+
+        if output_format == "table":
+            table = Table(title=f"Hallucinations (top {limit})")
+            table.add_column("Session ID", style="cyan", max_width=36)
+            table.add_column("Timestamp", max_width=19)
+            table.add_column("Output Preview", max_width=60)
+
+            for row in hallucinations.iter_rows(named=True):
+                session_id = row.get("session_id", "")[:36]
+                timestamp = (row.get("timestamp") or "")[:19]
+                output = row.get("output_text") or ""
+                # Truncate and clean output for display
+                output_preview = output[:57] + "..." if len(output) > 60 else output
+                output_preview = output_preview.replace("\n", " ")
+
+                table.add_row(session_id, timestamp, output_preview)
+
+            console.print(table)
+        elif output_format == "json":
+            import json
+            console.print(json.dumps(hallucinations.to_dicts(), indent=2))
+        elif output_format == "csv":
+            console.print(hallucinations.write_csv())
+
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        console.print("[dim]Make sure steps data has been extracted.[/dim]")
+        sys.exit(1)
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
