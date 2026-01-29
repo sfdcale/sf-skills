@@ -309,7 +309,12 @@ class DataCloudAuth:
 
     def test_connection(self) -> bool:
         """
-        Test the authentication by making a simple API call.
+        Test the authentication by making a simple Data Cloud Query API call.
+
+        Uses the v64.0 Query SQL endpoint to verify:
+        1. Token is valid
+        2. Data Cloud is accessible
+        3. User has cdp_query_api permissions
 
         Returns:
             True if authentication is successful
@@ -319,13 +324,18 @@ class DataCloudAuth:
         """
         token = self.get_token()
 
-        # Test with a simple Data Cloud metadata call
-        url = f"{self.instance_url}/services/data/v60.0/ssot/querybuilder/metadata"
+        # Test with a simple Data Cloud Query API call (v64.0)
+        url = f"{self.instance_url}/services/data/v64.0/ssot/query-sql"
+
+        # Minimal query to test connectivity - just check if STDM DMO exists
+        test_query = {
+            "sql": "SELECT ssot__Id__c FROM ssot__AIAgentSession__dlm LIMIT 1"
+        }
 
         with httpx.Client() as client:
-            response = client.get(url, headers=self.get_headers())
+            response = client.post(url, headers=self.get_headers(), json=test_query)
 
-            if response.status_code == 200:
+            if response.status_code in [200, 201]:
                 return True
             elif response.status_code == 401:
                 raise RuntimeError("Authentication failed: Invalid or expired token")
@@ -333,6 +343,15 @@ class DataCloudAuth:
                 raise RuntimeError(
                     "Access denied: Ensure ECA has cdp_query_api scope and user has Data Cloud permissions"
                 )
+            elif response.status_code == 400:
+                # 400 might mean DMO doesn't exist (no Agentforce data) but API works
+                error_text = response.text
+                if "does not exist" in error_text.lower():
+                    raise RuntimeError(
+                        "Data Cloud accessible but AIAgentSession DMO not found. "
+                        "Ensure Agentforce Session Tracing is enabled."
+                    )
+                raise RuntimeError(f"Query error: {response.text}")
             else:
                 raise RuntimeError(f"Connection test failed: {response.status_code} - {response.text}")
 

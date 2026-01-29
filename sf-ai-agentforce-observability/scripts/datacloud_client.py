@@ -96,7 +96,7 @@ class DataCloudClient:
     """
 
     auth: DataCloudAuth
-    api_version: str = "v60.0"
+    api_version: str = "v64.0"
     batch_size: int = DEFAULT_BATCH_SIZE
     timeout: float = DEFAULT_TIMEOUT
     _stats: QueryStats = field(default_factory=QueryStats)
@@ -108,8 +108,8 @@ class DataCloudClient:
 
     @property
     def query_url(self) -> str:
-        """Get the query endpoint URL."""
-        return f"{self.base_url}/ssot/querybuilder/execute"
+        """Get the Data Cloud Query SQL endpoint URL (v64.0+)."""
+        return f"{self.base_url}/ssot/query-sql"
 
     @property
     def stats(self) -> QueryStats:
@@ -215,34 +215,50 @@ class DataCloudClient:
         self._stats = QueryStats(start_time=datetime.now())
         records_yielded = 0
 
-        # Initial query request
-        request_body = {
-            "sql": sql,
-            "pageSize": self.batch_size
-        }
+        # v64.0 Query SQL API - just send the SQL, no pageSize
+        request_body = {"sql": sql}
 
         response = self._execute_request(self.query_url, "POST", request_body)
 
+        # Extract column names from metadata for converting arrays to dicts
+        metadata = response.get("metadata", [])
+        column_names = [col["name"] for col in metadata]
+
         while True:
-            data = response.get("data", [])
+            # v64.0 returns data as array of arrays, not array of dicts
+            raw_data = response.get("data", [])
             self._stats.batches_fetched += 1
 
-            for record in data:
+            for row in raw_data:
                 if limit and records_yielded >= limit:
                     self._stats.end_time = datetime.now()
                     return
+
+                # Convert array row to dict using column names
+                record = dict(zip(column_names, row))
 
                 self._stats.records_fetched += 1
                 records_yielded += 1
                 yield record
 
-            # Check for more pages
+            # Check for more pages via status
+            status = response.get("status", {})
+            completion_status = status.get("completionStatus", "")
+
+            # If query is still running or has more chunks, fetch via queryId
+            if completion_status in ["Running", "MoreChunksAvailable"]:
+                query_id = status.get("queryId")
+                if query_id:
+                    # Fetch next chunk via /rows endpoint
+                    next_url = f"{self.query_url}/{query_id}/rows"
+                    response = self._execute_request(next_url, "GET")
+                    continue
+
+            # Check for legacy nextRecordsUrl (backwards compatibility)
             next_url = response.get("nextRecordsUrl")
             if not next_url:
                 break
 
-            # Fetch next page (use GET for pagination URL)
-            # The nextRecordsUrl is typically a full URL
             if not next_url.startswith("http"):
                 next_url = f"{self.auth.instance_url}{next_url}"
 
@@ -318,19 +334,24 @@ class DataCloudClient:
             task = progress.add_task("Fetching...", total=None, records=0)
 
         try:
-            # Initial query request
-            request_body = {
-                "sql": sql,
-                "pageSize": self.batch_size
-            }
+            # v64.0 Query SQL API - just send the SQL, no pageSize
+            request_body = {"sql": sql}
 
             response = self._execute_request(self.query_url, "POST", request_body)
 
+            # Extract column names from metadata for converting arrays to dicts
+            metadata = response.get("metadata", [])
+            column_names = [col["name"] for col in metadata]
+
             while True:
-                data = response.get("data", [])
+                # v64.0 returns data as array of arrays
+                raw_data = response.get("data", [])
                 self._stats.batches_fetched += 1
 
-                if data:
+                if raw_data:
+                    # Convert array rows to dicts using column names
+                    data = [dict(zip(column_names, row)) for row in raw_data]
+
                     # Infer schema from first batch if not provided
                     if inferred_schema is None:
                         inferred_schema = self._infer_schema(data[0])
@@ -344,7 +365,18 @@ class DataCloudClient:
                     if progress and task is not None:
                         progress.update(task, records=records_written)
 
-                # Check for more pages
+                # Check for more pages via status (v64.0)
+                status = response.get("status", {})
+                completion_status = status.get("completionStatus", "")
+
+                if completion_status in ["Running", "MoreChunksAvailable"]:
+                    query_id = status.get("queryId")
+                    if query_id:
+                        next_url = f"{self.query_url}/{query_id}/rows"
+                        response = self._execute_request(next_url, "GET")
+                        continue
+
+                # Legacy pagination fallback
                 next_url = response.get("nextRecordsUrl")
                 if not next_url:
                     break

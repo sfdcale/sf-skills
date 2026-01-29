@@ -5,7 +5,10 @@ Provides type-safe models for:
 - AIAgentSession (Session level)
 - AIAgentInteraction (Turn/Session end)
 - AIAgentInteractionStep (LLM/Action steps)
-- AIAgentMoment (Messages)
+- AIAgentMoment (Messages/Summaries)
+
+Schema validated against Vivint-DevInt org (Jan 2026).
+Note: Field names use 'AiAgent' (lowercase 'i'), not 'AIAgent'.
 
 Usage:
     from models import AIAgentSession, SCHEMAS
@@ -25,7 +28,7 @@ import pyarrow as pa
 
 
 # ============================================================================
-# Pydantic Models
+# Pydantic Models (updated for v64.0 schema)
 # ============================================================================
 
 class AIAgentSession(BaseModel):
@@ -33,25 +36,34 @@ class AIAgentSession(BaseModel):
     Session-level record from ssot__AIAgentSession__dlm.
 
     Represents a complete agent conversation from start to finish.
-    Contains metadata about the session but not the actual messages.
+    Note: Agent API name is in AIAgentMoment, not here.
 
     Attributes:
         id: Unique session identifier
-        agent_api_name: API name of the agent handling this session
         start_timestamp: When the session started
         end_timestamp: When the session ended (null if ongoing)
         end_type: How the session ended (Completed, Abandoned, Escalated, etc.)
+        channel_type: Channel type (Messaging, Voice, etc.)
         messaging_session_id: Related messaging session (if applicable)
+        voice_call_id: Related voice call ID (if applicable)
         organization_id: Salesforce org ID
+        session_owner_id: Owner of the session
+        individual_id: Data Cloud individual ID
     """
 
     id: str = Field(alias="ssot__Id__c")
-    agent_api_name: Optional[str] = Field(default=None, alias="ssot__AIAgentApiName__c")
     start_timestamp: Optional[str] = Field(default=None, alias="ssot__StartTimestamp__c")
     end_timestamp: Optional[str] = Field(default=None, alias="ssot__EndTimestamp__c")
-    end_type: Optional[str] = Field(default=None, alias="ssot__AIAgentSessionEndType__c")
+    end_type: Optional[str] = Field(default=None, alias="ssot__AiAgentSessionEndType__c")
+    channel_type: Optional[str] = Field(default=None, alias="ssot__AiAgentChannelType__c")
     messaging_session_id: Optional[str] = Field(default=None, alias="ssot__RelatedMessagingSessionId__c")
-    organization_id: Optional[str] = Field(default=None, alias="ssot__OrganizationId__c")
+    voice_call_id: Optional[str] = Field(default=None, alias="ssot__RelatedVoiceCallId__c")
+    organization_id: Optional[str] = Field(default=None, alias="ssot__InternalOrganizationId__c")
+    session_owner_id: Optional[str] = Field(default=None, alias="ssot__SessionOwnerId__c")
+    session_owner_object: Optional[str] = Field(default=None, alias="ssot__SessionOwnerObject__c")
+    individual_id: Optional[str] = Field(default=None, alias="ssot__IndividualId__c")
+    previous_session_id: Optional[str] = Field(default=None, alias="ssot__PreviousSessionId__c")
+    variable_text: Optional[str] = Field(default=None, alias="ssot__VariableText__c")
 
     class Config:
         populate_by_name = True  # Allow both alias and field name
@@ -74,11 +86,18 @@ class AIAgentInteraction(BaseModel):
     """
 
     id: str = Field(alias="ssot__Id__c")
-    session_id: str = Field(alias="ssot__aiAgentSessionId__c")
-    interaction_type: Optional[str] = Field(default=None, alias="ssot__InteractionType__c")
+    session_id: str = Field(alias="ssot__AiAgentSessionId__c")
+    interaction_type: Optional[str] = Field(default=None, alias="ssot__AiAgentInteractionType__c")
     topic_api_name: Optional[str] = Field(default=None, alias="ssot__TopicApiName__c")
     start_timestamp: Optional[str] = Field(default=None, alias="ssot__StartTimestamp__c")
     end_timestamp: Optional[str] = Field(default=None, alias="ssot__EndTimestamp__c")
+    prev_interaction_id: Optional[str] = Field(default=None, alias="ssot__PrevInteractionId__c")
+    session_owner_id: Optional[str] = Field(default=None, alias="ssot__SessionOwnerId__c")
+    individual_id: Optional[str] = Field(default=None, alias="ssot__IndividualId__c")
+    organization_id: Optional[str] = Field(default=None, alias="ssot__InternalOrganizationId__c")
+    telemetry_trace_id: Optional[str] = Field(default=None, alias="ssot__TelemetryTraceId__c")
+    telemetry_trace_span_id: Optional[str] = Field(default=None, alias="ssot__TelemetryTraceSpanId__c")
+    attribute_text: Optional[str] = Field(default=None, alias="ssot__AttributeText__c")
 
     class Config:
         populate_by_name = True
@@ -102,17 +121,27 @@ class AIAgentInteractionStep(BaseModel):
         pre_step_variables: Variable state before step
         post_step_variables: Variable state after step
         generation_id: LLM generation identifier
+        error_message: Error message if step failed
     """
 
     id: str = Field(alias="ssot__Id__c")
-    interaction_id: str = Field(alias="ssot__AIAgentInteractionId__c")
-    step_type: Optional[str] = Field(default=None, alias="ssot__AIAgentInteractionStepType__c")
+    interaction_id: str = Field(alias="ssot__AiAgentInteractionId__c")
+    step_type: Optional[str] = Field(default=None, alias="ssot__AiAgentInteractionStepType__c")
     name: Optional[str] = Field(default=None, alias="ssot__Name__c")
     input_value: Optional[str] = Field(default=None, alias="ssot__InputValueText__c")
     output_value: Optional[str] = Field(default=None, alias="ssot__OutputValueText__c")
     pre_step_variables: Optional[str] = Field(default=None, alias="ssot__PreStepVariableText__c")
     post_step_variables: Optional[str] = Field(default=None, alias="ssot__PostStepVariableText__c")
     generation_id: Optional[str] = Field(default=None, alias="ssot__GenerationId__c")
+    error_message: Optional[str] = Field(default=None, alias="ssot__ErrorMessageText__c")
+    start_timestamp: Optional[str] = Field(default=None, alias="ssot__StartTimestamp__c")
+    end_timestamp: Optional[str] = Field(default=None, alias="ssot__EndTimestamp__c")
+    prev_step_id: Optional[str] = Field(default=None, alias="ssot__PrevStepId__c")
+    organization_id: Optional[str] = Field(default=None, alias="ssot__InternalOrganizationId__c")
+    telemetry_trace_span_id: Optional[str] = Field(default=None, alias="ssot__TelemetryTraceSpanId__c")
+    attribute_text: Optional[str] = Field(default=None, alias="ssot__AttributeText__c")
+    genai_gateway_request_id: Optional[str] = Field(default=None, alias="ssot__GenAiGatewayRequestId__c")
+    genai_gateway_response_id: Optional[str] = Field(default=None, alias="ssot__GenAiGatewayResponseId__c")
 
     class Config:
         populate_by_name = True
@@ -120,70 +149,104 @@ class AIAgentInteractionStep(BaseModel):
 
 class AIAgentMoment(BaseModel):
     """
-    Message-level record from ssot__AIAgentMoment__dlm.
+    Moment-level record from ssot__AIAgentMoment__dlm.
 
-    Represents a single message in the conversation (either user input
-    or agent output).
+    Represents a conversation moment with request/response summaries.
+    Note: This is where the agent API name lives, not in Session.
 
     Attributes:
-        id: Unique message identifier
-        interaction_id: Foreign key to parent interaction
-        content: Message text content
-        message_type: Type of message (INPUT or OUTPUT)
-        sent_timestamp: When the message was sent
+        id: Unique moment identifier
+        session_id: Foreign key to parent session
+        agent_api_name: API name of the agent
+        agent_version_api_name: Version of the agent
+        request_summary: Summary of user request
+        response_summary: Summary of agent response
+        start_timestamp: When this moment started
+        end_timestamp: When this moment ended
     """
 
     id: str = Field(alias="ssot__Id__c")
-    interaction_id: str = Field(alias="ssot__AIAgentInteractionId__c")
-    content: Optional[str] = Field(default=None, alias="ssot__ContentText__c")
-    message_type: Optional[str] = Field(default=None, alias="ssot__AIAgentInteractionMessageType__c")
-    sent_timestamp: Optional[str] = Field(default=None, alias="ssot__MessageSentTimestamp__c")
+    session_id: str = Field(alias="ssot__AiAgentSessionId__c")
+    agent_api_name: Optional[str] = Field(default=None, alias="ssot__AiAgentApiName__c")
+    agent_version_api_name: Optional[str] = Field(default=None, alias="ssot__AiAgentVersionApiName__c")
+    request_summary: Optional[str] = Field(default=None, alias="ssot__RequestSummaryText__c")
+    response_summary: Optional[str] = Field(default=None, alias="ssot__ResponseSummaryText__c")
+    start_timestamp: Optional[str] = Field(default=None, alias="ssot__StartTimestamp__c")
+    end_timestamp: Optional[str] = Field(default=None, alias="ssot__EndTimestamp__c")
+    organization_id: Optional[str] = Field(default=None, alias="ssot__InternalOrganizationId__c")
 
     class Config:
         populate_by_name = True
 
 
 # ============================================================================
-# PyArrow Schemas
+# PyArrow Schemas (updated for v64.0)
 # ============================================================================
 
 SESSION_SCHEMA = pa.schema([
     pa.field("ssot__Id__c", pa.string(), nullable=False),
-    pa.field("ssot__AIAgentApiName__c", pa.string(), nullable=True),
     pa.field("ssot__StartTimestamp__c", pa.string(), nullable=True),
     pa.field("ssot__EndTimestamp__c", pa.string(), nullable=True),
-    pa.field("ssot__AIAgentSessionEndType__c", pa.string(), nullable=True),
+    pa.field("ssot__AiAgentSessionEndType__c", pa.string(), nullable=True),
+    pa.field("ssot__AiAgentChannelType__c", pa.string(), nullable=True),
     pa.field("ssot__RelatedMessagingSessionId__c", pa.string(), nullable=True),
-    pa.field("ssot__OrganizationId__c", pa.string(), nullable=True),
+    pa.field("ssot__RelatedVoiceCallId__c", pa.string(), nullable=True),
+    pa.field("ssot__InternalOrganizationId__c", pa.string(), nullable=True),
+    pa.field("ssot__SessionOwnerId__c", pa.string(), nullable=True),
+    pa.field("ssot__SessionOwnerObject__c", pa.string(), nullable=True),
+    pa.field("ssot__IndividualId__c", pa.string(), nullable=True),
+    pa.field("ssot__PreviousSessionId__c", pa.string(), nullable=True),
+    pa.field("ssot__VariableText__c", pa.string(), nullable=True),
 ])
 
 INTERACTION_SCHEMA = pa.schema([
     pa.field("ssot__Id__c", pa.string(), nullable=False),
-    pa.field("ssot__aiAgentSessionId__c", pa.string(), nullable=False),
-    pa.field("ssot__InteractionType__c", pa.string(), nullable=True),
+    pa.field("ssot__AiAgentSessionId__c", pa.string(), nullable=False),
+    pa.field("ssot__AiAgentInteractionType__c", pa.string(), nullable=True),
     pa.field("ssot__TopicApiName__c", pa.string(), nullable=True),
     pa.field("ssot__StartTimestamp__c", pa.string(), nullable=True),
     pa.field("ssot__EndTimestamp__c", pa.string(), nullable=True),
+    pa.field("ssot__PrevInteractionId__c", pa.string(), nullable=True),
+    pa.field("ssot__SessionOwnerId__c", pa.string(), nullable=True),
+    pa.field("ssot__IndividualId__c", pa.string(), nullable=True),
+    pa.field("ssot__InternalOrganizationId__c", pa.string(), nullable=True),
+    pa.field("ssot__TelemetryTraceId__c", pa.string(), nullable=True),
+    pa.field("ssot__TelemetryTraceSpanId__c", pa.string(), nullable=True),
+    pa.field("ssot__AttributeText__c", pa.string(), nullable=True),
 ])
 
 STEP_SCHEMA = pa.schema([
     pa.field("ssot__Id__c", pa.string(), nullable=False),
-    pa.field("ssot__AIAgentInteractionId__c", pa.string(), nullable=False),
-    pa.field("ssot__AIAgentInteractionStepType__c", pa.string(), nullable=True),
+    pa.field("ssot__AiAgentInteractionId__c", pa.string(), nullable=False),
+    pa.field("ssot__AiAgentInteractionStepType__c", pa.string(), nullable=True),
     pa.field("ssot__Name__c", pa.string(), nullable=True),
     pa.field("ssot__InputValueText__c", pa.string(), nullable=True),
     pa.field("ssot__OutputValueText__c", pa.string(), nullable=True),
     pa.field("ssot__PreStepVariableText__c", pa.string(), nullable=True),
     pa.field("ssot__PostStepVariableText__c", pa.string(), nullable=True),
     pa.field("ssot__GenerationId__c", pa.string(), nullable=True),
+    pa.field("ssot__ErrorMessageText__c", pa.string(), nullable=True),
+    pa.field("ssot__StartTimestamp__c", pa.string(), nullable=True),
+    pa.field("ssot__EndTimestamp__c", pa.string(), nullable=True),
+    pa.field("ssot__PrevStepId__c", pa.string(), nullable=True),
+    pa.field("ssot__InternalOrganizationId__c", pa.string(), nullable=True),
+    pa.field("ssot__TelemetryTraceSpanId__c", pa.string(), nullable=True),
+    pa.field("ssot__AttributeText__c", pa.string(), nullable=True),
+    pa.field("ssot__GenAiGatewayRequestId__c", pa.string(), nullable=True),
+    pa.field("ssot__GenAiGatewayResponseId__c", pa.string(), nullable=True),
 ])
 
+# Note: AIAgentMoment schema - "messages" are now "moments" with summaries
 MESSAGE_SCHEMA = pa.schema([
     pa.field("ssot__Id__c", pa.string(), nullable=False),
-    pa.field("ssot__AIAgentInteractionId__c", pa.string(), nullable=False),
-    pa.field("ssot__ContentText__c", pa.string(), nullable=True),
-    pa.field("ssot__AIAgentInteractionMessageType__c", pa.string(), nullable=True),
-    pa.field("ssot__MessageSentTimestamp__c", pa.string(), nullable=True),
+    pa.field("ssot__AiAgentSessionId__c", pa.string(), nullable=False),
+    pa.field("ssot__AiAgentApiName__c", pa.string(), nullable=True),
+    pa.field("ssot__AiAgentVersionApiName__c", pa.string(), nullable=True),
+    pa.field("ssot__RequestSummaryText__c", pa.string(), nullable=True),
+    pa.field("ssot__ResponseSummaryText__c", pa.string(), nullable=True),
+    pa.field("ssot__StartTimestamp__c", pa.string(), nullable=True),
+    pa.field("ssot__EndTimestamp__c", pa.string(), nullable=True),
+    pa.field("ssot__InternalOrganizationId__c", pa.string(), nullable=True),
 ])
 
 

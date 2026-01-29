@@ -247,7 +247,7 @@ class STDMExtractor:
             interaction_query = self._build_child_query(
                 "interactions",
                 session_ids,
-                "ssot__aiAgentSessionId__c"
+                "ssot__AiAgentSessionId__c"
             )
             interaction_path = self.output_dir / "interactions"
 
@@ -276,7 +276,7 @@ class STDMExtractor:
             step_query = self._build_child_query(
                 "steps",
                 interaction_ids,
-                "ssot__AIAgentInteractionId__c"
+                "ssot__AiAgentInteractionId__c"
             )
             step_path = self.output_dir / "steps"
 
@@ -290,14 +290,14 @@ class STDMExtractor:
             if show_progress:
                 console.print(f"  [green]✓[/green] {result.steps_count} steps")
 
-            # 6. Extract messages
+            # 6. Extract messages (AIAgentMoment links to sessions, not interactions)
             if show_progress:
                 console.print("[cyan]Extracting messages...[/cyan]")
 
             message_query = self._build_child_query(
                 "messages",
-                interaction_ids,
-                "ssot__AIAgentInteractionId__c"
+                session_ids,  # Messages link to sessions, not interactions
+                "ssot__AiAgentSessionId__c"  # Note: lowercase 'i' in AiAgent
             )
             message_path = self.output_dir / "messages"
 
@@ -371,7 +371,7 @@ class STDMExtractor:
             interaction_query = self._build_child_query(
                 "interactions",
                 session_ids,
-                "ssot__aiAgentSessionId__c"
+                "ssot__AiAgentSessionId__c"
             )
             interaction_path = self.output_dir / "interactions"
 
@@ -395,7 +395,7 @@ class STDMExtractor:
                 step_query = self._build_child_query(
                     "steps",
                     interaction_ids,
-                    "ssot__AIAgentInteractionId__c"
+                    "ssot__AiAgentInteractionId__c"
                 )
                 step_path = self.output_dir / "steps"
 
@@ -409,14 +409,14 @@ class STDMExtractor:
                 if show_progress:
                     console.print(f"  [green]✓[/green] {result.steps_count} steps")
 
-                # 4. Extract messages
+                # 4. Extract messages (AIAgentMoment links to sessions, not interactions)
                 if show_progress:
                     console.print("[cyan]Extracting messages...[/cyan]")
 
                 message_query = self._build_child_query(
                     "messages",
-                    interaction_ids,
-                    "ssot__AIAgentInteractionId__c"
+                    session_ids,  # Messages link to sessions, not interactions
+                    "ssot__AiAgentSessionId__c"  # Note: lowercase 'i' in AiAgent
                 )
                 message_path = self.output_dir / "messages"
 
