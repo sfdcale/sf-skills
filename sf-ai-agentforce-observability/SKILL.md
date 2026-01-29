@@ -1,11 +1,11 @@
 ---
 name: sf-ai-agentforce-observability
 description: >
-  Extract and analyze Agentforce session tracing data from Salesforce Data Cloud.
+  Extract and analyze Agentforce session tracing data from Salesforce Data 360.
   Supports high-volume extraction (1-10M records/day), Polars-based analysis,
   and debugging workflows for agent sessions.
 license: MIT
-compatibility: "Requires Data Cloud enabled org with Agentforce Session Tracing"
+compatibility: "Requires Data 360 enabled org with Agentforce Session Tracing"
 metadata:
   version: "1.0.0"
   author: "Jag Valaiyapathy"
@@ -40,11 +40,11 @@ hooks:
 
 # sf-ai-agentforce-observability: Agentforce Session Tracing Extraction & Analysis
 
-Expert in extracting and analyzing Agentforce session tracing data from Salesforce Data Cloud. Supports high-volume data extraction (1-10M records/day), Parquet storage, and Polars-based analysis for debugging agent behavior.
+Expert in extracting and analyzing Agentforce session tracing data from Salesforce Data 360. Supports high-volume data extraction (1-10M records/day), Parquet storage, and Polars-based analysis for debugging agent behavior.
 
 ## Core Responsibilities
 
-1. **Session Extraction**: Extract STDM (Session Tracing Data Model) data via Data Cloud Query API
+1. **Session Extraction**: Extract STDM (Session Tracing Data Model) data via Data 360 Query API
 2. **Data Storage**: Write to Parquet format with PyArrow for efficient storage
 3. **Analysis**: Polars-based lazy evaluation for memory-efficient analysis
 4. **Debugging**: Session timeline reconstruction for troubleshooting agent issues
@@ -76,10 +76,10 @@ Before extracting session data, verify:
 
 | Check | How to Verify | Why |
 |-------|---------------|-----|
-| **Data Cloud enabled** | Setup → Data Cloud | Required for Query API |
+| **Data 360 enabled** | Setup → Data 360 | Required for Query API |
 | **Agentforce activated** | Setup → Agentforce | Generates session data |
 | **Session Tracing enabled** | Agent Settings | Must be ON to collect data |
-| **JWT Auth configured** | Use `sf-connected-apps` | Required for Data Cloud API |
+| **JWT Auth configured** | Use `sf-connected-apps` | Required for Data 360 API |
 
 ### Auth Setup (via sf-connected-apps)
 
@@ -188,9 +188,9 @@ Use **AskUserQuestion** to gather:
 Verify JWT auth is configured:
 
 ```python
-from scripts.auth import DataCloudAuth
+from scripts.auth import Data360Auth
 
-auth = DataCloudAuth(
+auth = Data360Auth(
     org_alias="myorg",
     consumer_key="YOUR_CONSUMER_KEY"
 )
@@ -202,7 +202,7 @@ print(f"Auth successful: {token[:20]}...")
 
 If auth fails, invoke:
 ```
-Skill(skill="sf-connected-apps", args="Setup JWT Bearer for Data Cloud")
+Skill(skill="sf-connected-apps", args="Setup JWT Bearer for Data 360")
 ```
 
 ### Phase 3: Extraction
@@ -402,7 +402,7 @@ TIMELINE
 
 | Insight | Description | Action |
 |---------|-------------|--------|
-| **STDM is read-only** | Data Cloud stores traces; cannot modify | Use for analysis only |
+| **STDM is read-only** | Data 360 stores traces; cannot modify | Use for analysis only |
 | **Session lag** | Data may lag 5-15 minutes | Don't expect real-time |
 | **Volume limits** | Query API: 10M records/day | Use incremental extraction |
 | **Parquet efficiency** | 10x smaller than JSON | Always use Parquet for storage |

@@ -7,7 +7,7 @@ Provides type-safe models for:
 - AIAgentInteractionStep (LLM/Action steps)
 - AIAgentMoment (Messages/Summaries)
 
-Schema validated against Vivint-DevInt org (Jan 2026).
+Schema validated against Vivint-DevInt org (Jan 2026) using Data 360 v65.0 API.
 Note: Field names use 'AiAgent' (lowercase 'i'), not 'AIAgent'.
 
 Usage:
@@ -28,7 +28,7 @@ import pyarrow as pa
 
 
 # ============================================================================
-# Pydantic Models (updated for v64.0 schema)
+# Pydantic Models (updated for v65.0 schema)
 # ============================================================================
 
 class AIAgentSession(BaseModel):
@@ -48,7 +48,7 @@ class AIAgentSession(BaseModel):
         voice_call_id: Related voice call ID (if applicable)
         organization_id: Salesforce org ID
         session_owner_id: Owner of the session
-        individual_id: Data Cloud individual ID
+        individual_id: Data 360 individual ID
     """
 
     id: str = Field(alias="ssot__Id__c")
@@ -180,7 +180,7 @@ class AIAgentMoment(BaseModel):
 
 
 # ============================================================================
-# PyArrow Schemas (updated for v64.0)
+# PyArrow Schemas (updated for v65.0)
 # ============================================================================
 
 SESSION_SCHEMA = pa.schema([

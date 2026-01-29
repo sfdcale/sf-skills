@@ -1,5 +1,5 @@
 """
-Data Cloud Query API client with streaming pagination.
+Data 360 Query API client with streaming pagination.
 
 Handles millions of records efficiently via cursor-based iteration
 and direct Parquet writing for memory efficiency.
@@ -10,10 +10,11 @@ Features:
 - Streaming iterator for memory efficiency
 - Configurable batch size (default 2000)
 - Direct-to-Parquet writing
+- Async query support (status, rows, cancel endpoints)
 
 Usage:
-    auth = DataCloudAuth("myorg", "consumer_key")
-    client = DataCloudClient(auth)
+    auth = Data360Auth("myorg", "consumer_key")
+    client = Data360Client(auth)
 
     # Iterate over results
     for record in client.query("SELECT * FROM ssot__AIAgentSession__dlm"):
@@ -24,6 +25,12 @@ Usage:
         "SELECT * FROM ssot__AIAgentSession__dlm",
         Path("./sessions.parquet")
     )
+
+    # Async query pattern (v65.0+)
+    result = client.query("SELECT * FROM ssot__AIAgentSession__dlm")
+    status = client.get_query_status(query_id)
+    rows = client.get_query_rows(query_id, offset=0, row_limit=1000)
+    client.cancel_query(query_id)
 """
 
 import json
@@ -75,40 +82,40 @@ class QueryStats:
 
 
 @dataclass
-class DataCloudClient:
+class Data360Client:
     """
-    Data Cloud Query API client with streaming support.
+    Data 360 Query API client with streaming support.
 
-    Provides efficient querying of Data Cloud DMOs with automatic
+    Provides efficient querying of Data 360 DMOs with automatic
     pagination and optional direct-to-Parquet writing.
 
     Attributes:
-        auth: DataCloudAuth instance for authentication
-        api_version: Salesforce API version (default: v60.0)
+        auth: Data360Auth instance for authentication
+        api_version: Salesforce API version (default: v65.0)
         batch_size: Records per API request (default: 2000)
         timeout: Request timeout in seconds (default: 120)
 
     Example:
-        >>> auth = DataCloudAuth("prod", "3MVG9...")
-        >>> client = DataCloudClient(auth)
+        >>> auth = Data360Auth("prod", "3MVG9...")
+        >>> client = Data360Client(auth)
         >>> for record in client.query("SELECT Id FROM ssot__AIAgentSession__dlm"):
         ...     print(record["ssot__Id__c"])
     """
 
     auth: DataCloudAuth
-    api_version: str = "v64.0"
+    api_version: str = "v65.0"
     batch_size: int = DEFAULT_BATCH_SIZE
     timeout: float = DEFAULT_TIMEOUT
     _stats: QueryStats = field(default_factory=QueryStats)
 
     @property
     def base_url(self) -> str:
-        """Get the Data Cloud Query API base URL."""
+        """Get the Data 360 Query API base URL."""
         return f"{self.auth.instance_url}/services/data/{self.api_version}"
 
     @property
     def query_url(self) -> str:
-        """Get the Data Cloud Query SQL endpoint URL (v64.0+)."""
+        """Get the Data 360 Query SQL endpoint URL (v64.0+)."""
         return f"{self.base_url}/ssot/query-sql"
 
     @property
@@ -128,12 +135,12 @@ class DataCloudClient:
 
         Args:
             url: Request URL
-            method: HTTP method
+            method: HTTP method (GET, POST, DELETE)
             json_body: Request body for POST requests
             retry_count: Current retry attempt
 
         Returns:
-            Response JSON
+            Response JSON (empty dict for DELETE with 204)
 
         Raises:
             RuntimeError: If request fails after retries
@@ -146,6 +153,8 @@ class DataCloudClient:
                         headers=self.auth.get_headers(),
                         json=json_body
                     )
+                elif method == "DELETE":
+                    response = client.delete(url, headers=self.auth.get_headers())
                 else:
                     response = client.get(url, headers=self.auth.get_headers())
 
@@ -186,6 +195,11 @@ class DataCloudClient:
                     raise RuntimeError(f"Query failed ({response.status_code}): {error_msg}")
 
                 self._stats.bytes_transferred += len(response.content)
+
+                # Handle 204 No Content (e.g., DELETE success)
+                if response.status_code == 204:
+                    return {}
+
                 return response.json()
 
             except httpx.TimeoutException:
@@ -196,13 +210,13 @@ class DataCloudClient:
 
     def query(self, sql: str, limit: Optional[int] = None) -> Iterator[Dict[str, Any]]:
         """
-        Execute Data Cloud SQL and yield records.
+        Execute Data 360 SQL and yield records.
 
         Handles pagination automatically, yielding one record at a time
         for memory efficiency.
 
         Args:
-            sql: Data Cloud SQL query
+            sql: Data 360 SQL query
             limit: Optional maximum records to return
 
         Yields:
@@ -215,7 +229,7 @@ class DataCloudClient:
         self._stats = QueryStats(start_time=datetime.now())
         records_yielded = 0
 
-        # v64.0 Query SQL API - just send the SQL, no pageSize
+        # v65.0 Query SQL API - just send the SQL, no pageSize
         request_body = {"sql": sql}
 
         response = self._execute_request(self.query_url, "POST", request_body)
@@ -225,7 +239,7 @@ class DataCloudClient:
         column_names = [col["name"] for col in metadata]
 
         while True:
-            # v64.0 returns data as array of arrays, not array of dicts
+            # v65.0 returns data as array of arrays, not array of dicts
             raw_data = response.get("data", [])
             self._stats.batches_fetched += 1
 
@@ -274,12 +288,105 @@ class DataCloudClient:
         or query_to_parquet() for large results.
 
         Args:
-            sql: Data Cloud SQL query
+            sql: Data 360 SQL query
 
         Returns:
             List of all matching records
         """
         return list(self.query(sql))
+
+    def get_query_status(self, query_id: str) -> Dict[str, Any]:
+        """
+        Get status of a running or completed query.
+
+        Use this to poll for query completion when a query returns
+        status "Running" instead of immediate results.
+
+        Args:
+            query_id: The query ID returned from initial query execution
+
+        Returns:
+            Status dict with keys:
+                - completionStatus: "Running", "Completed", "Failed", etc.
+                - rowCount: Number of rows (when completed)
+                - errorMessage: Error details (if failed)
+
+        Example:
+            >>> result = client.query("SELECT * FROM large_table")
+            >>> if result.get("status", {}).get("completionStatus") == "Running":
+            ...     query_id = result["status"]["queryId"]
+            ...     while True:
+            ...         status = client.get_query_status(query_id)
+            ...         if status.get("completionStatus") == "Completed":
+            ...             break
+            ...         time.sleep(1)
+        """
+        url = f"{self.query_url}/{query_id}"
+        return self._execute_request(url, "GET")
+
+    def get_query_rows(
+        self,
+        query_id: str,
+        offset: int = 0,
+        row_limit: int = 10000
+    ) -> Dict[str, Any]:
+        """
+        Get paginated results from a completed query.
+
+        More efficient than re-running the query for pagination.
+        Use after query completes to fetch results in chunks.
+
+        Args:
+            query_id: The query ID from a completed query
+            offset: Number of rows to skip (for pagination)
+            row_limit: Maximum rows to return (default: 10000, max: 10000)
+
+        Returns:
+            Dict with:
+                - metadata: Column definitions
+                - data: Array of row arrays
+                - status: Pagination status
+
+        Example:
+            >>> # Fetch all rows in batches of 5000
+            >>> offset = 0
+            >>> all_rows = []
+            >>> while True:
+            ...     result = client.get_query_rows(query_id, offset=offset, row_limit=5000)
+            ...     rows = result.get("data", [])
+            ...     if not rows:
+            ...         break
+            ...     all_rows.extend(rows)
+            ...     offset += len(rows)
+        """
+        url = f"{self.query_url}/{query_id}/rows?offset={offset}&rowLimit={row_limit}"
+        return self._execute_request(url, "GET")
+
+    def cancel_query(self, query_id: str) -> bool:
+        """
+        Cancel a running query.
+
+        Use to terminate long-running queries that are no longer needed.
+
+        Args:
+            query_id: The query ID to cancel
+
+        Returns:
+            True if cancellation was successful
+
+        Raises:
+            RuntimeError: If cancellation fails
+
+        Example:
+            >>> result = client.query("SELECT * FROM huge_table")
+            >>> query_id = result.get("status", {}).get("queryId")
+            >>> if query_id:
+            ...     client.cancel_query(query_id)
+            ...     print("Query cancelled")
+        """
+        url = f"{self.query_url}/{query_id}"
+        self._execute_request(url, "DELETE")
+        return True
 
     def query_to_parquet(
         self,
@@ -297,7 +404,7 @@ class DataCloudClient:
         Streams data in batches to avoid memory issues with large datasets.
 
         Args:
-            sql: Data Cloud SQL query
+            sql: Data 360 SQL query
             output_path: Path to output Parquet file or directory (if partitioned)
             schema: Optional PyArrow schema (auto-inferred if not provided)
             partition_cols: Optional columns to partition by
@@ -338,7 +445,7 @@ class DataCloudClient:
             task = progress.add_task("Fetching...", total=None, records=0)
 
         try:
-            # v64.0 Query SQL API - just send the SQL, no pageSize
+            # v65.0 Query SQL API - just send the SQL, no pageSize
             request_body = {"sql": sql}
 
             response = self._execute_request(self.query_url, "POST", request_body)
@@ -348,7 +455,7 @@ class DataCloudClient:
             column_names = [col["name"] for col in metadata]
 
             while True:
-                # v64.0 returns data as array of arrays
+                # v65.0 returns data as array of arrays
                 raw_data = response.get("data", [])
                 self._stats.batches_fetched += 1
 
@@ -369,7 +476,7 @@ class DataCloudClient:
                     if progress and task is not None:
                         progress.update(task, records=records_written)
 
-                # Check for more pages via status (v64.0)
+                # Check for more pages via status (v65.0)
                 status = response.get("status", {})
                 completion_status = status.get("completionStatus", "")
 
@@ -499,7 +606,7 @@ class DataCloudClient:
 
     def get_dmo_metadata(self, dmo_name: str) -> Dict[str, Any]:
         """
-        Get metadata for a Data Model Object.
+        Get metadata for a Data 360 Data Model Object.
 
         Args:
             dmo_name: DMO API name (e.g., ssot__AIAgentSession__dlm)
@@ -512,7 +619,7 @@ class DataCloudClient:
 
     def list_dmos(self) -> List[Dict[str, Any]]:
         """
-        List all available Data Model Objects.
+        List all available Data 360 Data Model Objects.
 
         Returns:
             List of DMO metadata dictionaries
@@ -540,3 +647,7 @@ class DataCloudClient:
         if result:
             return int(result[0].get("cnt", 0))
         return 0
+
+
+# Backwards compatibility alias (Data Cloud → Data 360 rebrand, Oct 2025)
+DataCloudClient = Data360Client

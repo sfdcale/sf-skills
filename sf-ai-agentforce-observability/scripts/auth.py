@@ -1,5 +1,5 @@
 """
-JWT Bearer authentication for Salesforce Data Cloud.
+JWT Bearer authentication for Salesforce Data 360.
 
 Uses certificate patterns from sf-connected-apps skill for secure
 server-to-server authentication without user interaction.
@@ -17,17 +17,17 @@ Key Path Resolution (in order):
 
 Usage:
     # With app-specific key (recommended)
-    auth = DataCloudAuth(org_alias="myorg", consumer_key="3MVG9...")
+    auth = Data360Auth(org_alias="myorg", consumer_key="3MVG9...")
 
     # With explicit key path
-    auth = DataCloudAuth(
+    auth = Data360Auth(
         org_alias="myorg",
         consumer_key="3MVG9...",
         key_path=Path("~/.sf/jwt/custom.key").expanduser()
     )
 
     token = auth.get_token()
-    # Use token for Data Cloud API requests
+    # Use token for Data 360 API requests
 """
 
 import json
@@ -70,9 +70,9 @@ class OrgInfo:
 
 
 @dataclass
-class DataCloudAuth:
+class Data360Auth:
     """
-    JWT Bearer authentication for Data Cloud Query API.
+    JWT Bearer authentication for Data 360 Query API.
 
     This class handles:
     - JWT assertion generation using X.509 certificates
@@ -86,7 +86,7 @@ class DataCloudAuth:
         key_path: Path to private key file (default: ~/.sf/jwt/{org_alias}.key)
 
     Example:
-        >>> auth = DataCloudAuth("prod", "3MVG9...")
+        >>> auth = Data360Auth("prod", "3MVG9...")
         >>> token = auth.get_token()
         >>> headers = {"Authorization": f"Bearer {token}"}
     """
@@ -256,7 +256,7 @@ class DataCloudAuth:
             Valid access token string
 
         Example:
-            >>> auth = DataCloudAuth("prod", "3MVG9...")
+            >>> auth = Data360Auth("prod", "3MVG9...")
             >>> token = auth.get_token()
             >>> # Token is cached, subsequent calls are fast
             >>> token = auth.get_token()  # Returns cached token
@@ -293,7 +293,7 @@ class DataCloudAuth:
             Dict with Authorization header
 
         Example:
-            >>> auth = DataCloudAuth("prod", "3MVG9...")
+            >>> auth = Data360Auth("prod", "3MVG9...")
             >>> headers = auth.get_headers()
             >>> response = httpx.get(url, headers=headers)
         """
@@ -309,11 +309,11 @@ class DataCloudAuth:
 
     def test_connection(self) -> bool:
         """
-        Test the authentication by making a simple Data Cloud Query API call.
+        Test the authentication by making a simple Data 360 Query API call.
 
-        Uses the v64.0 Query SQL endpoint to verify:
+        Uses the v65.0 Query SQL endpoint to verify:
         1. Token is valid
-        2. Data Cloud is accessible
+        2. Data 360 is accessible
         3. User has cdp_query_api permissions
 
         Returns:
@@ -324,8 +324,8 @@ class DataCloudAuth:
         """
         token = self.get_token()
 
-        # Test with a simple Data Cloud Query API call (v64.0)
-        url = f"{self.instance_url}/services/data/v64.0/ssot/query-sql"
+        # Test with a simple Data 360 Query API call (v65.0)
+        url = f"{self.instance_url}/services/data/v65.0/ssot/query-sql"
 
         # Minimal query to test connectivity - just check if STDM DMO exists
         test_query = {
@@ -341,14 +341,14 @@ class DataCloudAuth:
                 raise RuntimeError("Authentication failed: Invalid or expired token")
             elif response.status_code == 403:
                 raise RuntimeError(
-                    "Access denied: Ensure ECA has cdp_query_api scope and user has Data Cloud permissions"
+                    "Access denied: Ensure ECA has cdp_query_api scope and user has Data 360 permissions"
                 )
             elif response.status_code == 400:
                 # 400 might mean DMO doesn't exist (no Agentforce data) but API works
                 error_text = response.text
                 if "does not exist" in error_text.lower():
                     raise RuntimeError(
-                        "Data Cloud accessible but AIAgentSession DMO not found. "
+                        "Data 360 accessible but AIAgentSession DMO not found. "
                         "Ensure Agentforce Session Tracing is enabled."
                     )
                 raise RuntimeError(f"Query error: {response.text}")
@@ -356,9 +356,9 @@ class DataCloudAuth:
                 raise RuntimeError(f"Connection test failed: {response.status_code} - {response.text}")
 
 
-def get_auth_from_env(org_alias: str) -> DataCloudAuth:
+def get_auth_from_env(org_alias: str) -> Data360Auth:
     """
-    Create DataCloudAuth from environment variables.
+    Create Data360Auth from environment variables.
 
     Expects:
     - SF_CONSUMER_KEY or SF_{ORG_ALIAS}_CONSUMER_KEY environment variable
@@ -368,7 +368,7 @@ def get_auth_from_env(org_alias: str) -> DataCloudAuth:
         org_alias: Salesforce org alias
 
     Returns:
-        Configured DataCloudAuth instance
+        Configured Data360Auth instance
     """
     import os
 
@@ -382,4 +382,8 @@ def get_auth_from_env(org_alias: str) -> DataCloudAuth:
             f"Consumer key not found. Set SF_CONSUMER_KEY or SF_{org_alias.upper()}_CONSUMER_KEY"
         )
 
-    return DataCloudAuth(org_alias=org_alias, consumer_key=consumer_key)
+    return Data360Auth(org_alias=org_alias, consumer_key=consumer_key)
+
+
+# Backwards compatibility alias (Data Cloud → Data 360 rebrand, Oct 2025)
+DataCloudAuth = Data360Auth

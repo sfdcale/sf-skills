@@ -46,11 +46,11 @@ RuntimeError: Access denied: Ensure ECA has cdp_query_api scope
    - `cdp_query_api`
    - `cdp_profile_api`
 
-2. **Assign Data Cloud Permissions** to user:
-   - Setup → Permission Sets → Data Cloud permissions
+2. **Assign Data 360 Permissions** to user:
+   - Setup → Permission Sets → Data 360 permissions
 
-3. **Enable Data Cloud** in org:
-   - Setup → Data Cloud → Enable
+3. **Enable Data 360** in org:
+   - Setup → Data 360 → Enable
 
 ---
 
@@ -75,11 +75,11 @@ Extracted 0 sessions
 **Debug:**
 ```python
 # Check if DMO exists and has data
-from scripts.datacloud_client import DataCloudClient
+from scripts.datacloud_client import Data360Client
 
-client = DataCloudClient(auth)
+client = Data360Client(auth)
 count = client.count("ssot__AIAgentSession__dlm")
-print(f"Total sessions in Data Cloud: {count}")
+print(f"Total sessions in Data 360: {count}")
 ```
 
 ### Query Timeout
@@ -288,7 +288,7 @@ ValueError: Consumer key not found. Set SF_CONSUMER_KEY
 
 ---
 
-## Data Cloud Specific Issues
+## Data 360 Specific Issues
 
 ### DMO Not Found
 
@@ -300,8 +300,8 @@ Error: Object ssot__AIAgentSession__dlm not found
 **Causes:**
 
 1. **Session tracing not enabled** - Enable in Agentforce settings
-2. **Wrong API version** - Use v60.0 or higher
-3. **Permission issue** - User needs Data Cloud access
+2. **Wrong API version** - Use v65.0 or higher
+3. **Permission issue** - User needs Data 360 access
 
 ### Query Syntax Error
 
@@ -324,17 +324,17 @@ Error: Unexpected token at position X
 
 Critical discoveries from live testing against Vivint-DevInt org.
 
-### API Version: v64.0 Required
+### API Version: v65.0 Recommended
 
-**Problem:** Documentation referenced v60.0, but Data Cloud Query SQL API requires v64.0.
+**Problem:** Documentation referenced v60.0, but Data 360 Query SQL API requires v64.0+. We recommend v65.0 (Winter '26).
 
 **Fix:**
 ```python
 # Wrong (v60.0)
 url = f"{instance_url}/services/data/v60.0/ssot/querybuilder/execute"
 
-# Correct (v64.0)
-url = f"{instance_url}/services/data/v64.0/ssot/query-sql"
+# Correct (v65.0)
+url = f"{instance_url}/services/data/v65.0/ssot/query-sql"
 ```
 
 ### Field Naming: AiAgent (lowercase 'i')
@@ -368,9 +368,9 @@ AIAgentMoment (links to session, not interaction)
 
 ### Response Format: Array of Arrays
 
-**Problem:** Expected array of objects, but v64.0 returns array of arrays.
+**Problem:** Expected array of objects, but v64.0+ returns array of arrays.
 
-**v64.0 Response:**
+**v65.0 Response:**
 ```json
 {
   "metadata": [{"name": "ssot__Id__c"}, {"name": "ssot__Name__c"}],
@@ -434,16 +434,16 @@ result = client.query_to_parquet(
 python3 scripts/cli.py extract --org prod --verbose 2>&1 | tee debug.log
 ```
 
-### Check Data Cloud Status
+### Check Data 360 Status
 
 ```bash
 # List available DMOs
 python3 -c "
-from scripts.auth import DataCloudAuth
-from scripts.datacloud_client import DataCloudClient
+from scripts.auth import Data360Auth
+from scripts.datacloud_client import Data360Client
 
-auth = DataCloudAuth('prod', 'KEY')
-client = DataCloudClient(auth)
+auth = Data360Auth('prod', 'KEY')
+client = Data360Client(auth)
 dmos = client.list_dmos()
 for dmo in dmos:
     print(dmo.get('name'))
@@ -456,5 +456,5 @@ If you encounter issues not covered here:
 
 1. Enable verbose mode and capture logs
 2. Note the error message and stack trace
-3. Check Data Cloud health status
+3. Check Data 360 health status
 4. Contact Salesforce support for API issues

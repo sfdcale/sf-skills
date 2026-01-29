@@ -1,10 +1,10 @@
 # sf-ai-agentforce-observability
 
-Extract and analyze Agentforce session tracing data from Salesforce Data Cloud.
+Extract and analyze Agentforce session tracing data from Salesforce Data 360.
 
 ## Features
 
-- **High-Volume Extraction**: Handle 1-10M records/day via Data Cloud Query API
+- **High-Volume Extraction**: Handle 1-10M records/day via Data 360 Query API
 - **Parquet Storage**: Efficient columnar storage (10x smaller than JSON)
 - **Polars Analysis**: Lazy evaluation for memory-efficient analysis of 100M+ rows
 - **Session Debugging**: Reconstruct session timelines for troubleshooting
@@ -18,13 +18,13 @@ Extract and analyze Agentforce session tracing data from Salesforce Data Cloud.
 # Install Python dependencies
 pip install polars pyarrow pyjwt cryptography httpx rich click pydantic
 
-# Verify Data Cloud access
+# Verify Data 360 access
 sf org display --target-org myorg
 ```
 
 ### 2. Configure Authentication
 
-Session tracing extraction requires JWT Bearer auth to the Data Cloud Query API.
+Session tracing extraction requires JWT Bearer auth to the Data 360 Query API.
 
 ```bash
 # Generate certificate
@@ -133,7 +133,7 @@ See [docs/cli-reference.md](docs/cli-reference.md) for all options.
 ## Requirements
 
 - Python 3.10+
-- Salesforce org with Data Cloud and Agentforce enabled
+- Salesforce org with Data 360 and Agentforce enabled
 - Session Tracing enabled in Agentforce settings
 - JWT Bearer auth configured (via External Client App)
 
