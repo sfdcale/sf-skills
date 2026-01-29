@@ -619,16 +619,16 @@ def find_toxic(data_dir: str, limit: int, output_format: str):
         if output_format == "table":
             table = Table()
             table.add_column("Session ID", style="cyan", max_width=36)
-            table.add_column("Score", justify="right")
+            table.add_column("Confidence", justify="right")
             table.add_column("Timestamp", max_width=19)
 
             for row in toxic.iter_rows(named=True):
                 session_id = str(row.get("session_id", ""))[:36]
-                score = row.get("toxicity_score")
-                score_str = f"{score:.2f}" if score else "N/A"
+                conf = row.get("confidence")
+                conf_str = f"{conf:.2f}" if conf else "N/A"
                 timestamp = (row.get("timestamp") or "")[:19]
 
-                table.add_row(session_id, score_str, timestamp)
+                table.add_row(session_id, conf_str, timestamp)
 
             console.print(table)
         elif output_format == "json":

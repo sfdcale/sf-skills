@@ -185,28 +185,34 @@ class AIAgentMoment(BaseModel):
 
 class GenAIGeneration(BaseModel):
     """
-    LLM generation record from ssot__GenAIGeneration__dlm.
+    LLM generation record from GenAIGeneration__dlm.
+
+    Note: This DMO does NOT use ssot__ prefix - it's from Einstein Trust Layer.
 
     Represents a single LLM response. Linked from AIAgentInteractionStep
     via ssot__GenerationId__c.
 
     Attributes:
         generation_id: Unique generation identifier (PK)
+        generation_response_id: Response identifier
         response_text: The generated response text
-        model_name: Name of the LLM model used
-        prompt_text: The prompt sent to the LLM
-        start_timestamp: When generation started
-        end_timestamp: When generation completed
-        organization_id: Salesforce org ID
+        masked_response_text: Response with PII masked
+        response_parameters: JSON parameters for the response
+        feature: Feature that generated this (e.g., 'AgentForce')
+        timestamp: When the generation occurred
+        org_id: Salesforce org ID
+        cloud: Cloud identifier
     """
 
     generation_id: str = Field(alias="generationId__c")
+    generation_response_id: Optional[str] = Field(default=None, alias="generationResponseId__c")
     response_text: Optional[str] = Field(default=None, alias="responseText__c")
-    model_name: Optional[str] = Field(default=None, alias="modelName__c")
-    prompt_text: Optional[str] = Field(default=None, alias="promptText__c")
-    start_timestamp: Optional[str] = Field(default=None, alias="startTimestamp__c")
-    end_timestamp: Optional[str] = Field(default=None, alias="endTimestamp__c")
-    organization_id: Optional[str] = Field(default=None, alias="internalOrganizationId__c")
+    masked_response_text: Optional[str] = Field(default=None, alias="maskedResponseText__c")
+    response_parameters: Optional[str] = Field(default=None, alias="responseParameters__c")
+    feature: Optional[str] = Field(default=None, alias="feature__c")
+    timestamp: Optional[str] = Field(default=None, alias="timestamp__c")
+    org_id: Optional[str] = Field(default=None, alias="orgId__c")
+    cloud: Optional[str] = Field(default=None, alias="cloud__c")
 
     class Config:
         populate_by_name = True
@@ -214,7 +220,9 @@ class GenAIGeneration(BaseModel):
 
 class GenAIContentQuality(BaseModel):
     """
-    Quality assessment record from ssot__GenAIContentQuality__dlm.
+    Quality assessment record from GenAIContentQuality__dlm.
+
+    Note: This DMO does NOT use ssot__ prefix - it's from Einstein Trust Layer.
 
     Contains toxicity detection results for a generation.
 
@@ -222,15 +230,21 @@ class GenAIContentQuality(BaseModel):
         id: Unique quality record identifier
         parent_id: Foreign key to GenAIGeneration (generationId__c)
         is_toxicity_detected: Whether toxicity was detected ('true'/'false')
-        toxicity_score: Toxicity confidence score (0.0 - 1.0)
-        organization_id: Salesforce org ID
+        content_type: Type of content assessed
+        feature: Feature that generated this
+        timestamp: When the assessment occurred
+        org_id: Salesforce org ID
+        cloud: Cloud identifier
     """
 
     id: str = Field(alias="id__c")
     parent_id: str = Field(alias="parent__c")
     is_toxicity_detected: Optional[str] = Field(default=None, alias="isToxicityDetected__c")
-    toxicity_score: Optional[float] = Field(default=None, alias="toxicityScore__c")
-    organization_id: Optional[str] = Field(default=None, alias="internalOrganizationId__c")
+    content_type: Optional[str] = Field(default=None, alias="contentType__c")
+    feature: Optional[str] = Field(default=None, alias="feature__c")
+    timestamp: Optional[str] = Field(default=None, alias="timestamp__c")
+    org_id: Optional[str] = Field(default=None, alias="orgId__c")
+    cloud: Optional[str] = Field(default=None, alias="cloud__c")
 
     class Config:
         populate_by_name = True
@@ -238,7 +252,9 @@ class GenAIContentQuality(BaseModel):
 
 class GenAIContentCategory(BaseModel):
     """
-    Categorization record from ssot__GenAIContentCategory__dlm.
+    Categorization record from GenAIContentCategory__dlm.
+
+    Note: This DMO does NOT use ssot__ prefix - it's from Einstein Trust Layer.
 
     Contains detector results (instruction adherence, task resolution, etc.)
 
@@ -253,15 +269,19 @@ class GenAIContentCategory(BaseModel):
         detector_type: Type of detector (Toxicity, InstructionAdherence, TaskResolution)
         category: Detection category result
         value: Confidence score (0.0 - 1.0)
-        organization_id: Salesforce org ID
+        timestamp: When the categorization occurred
+        org_id: Salesforce org ID
+        cloud: Cloud identifier
     """
 
     id: str = Field(alias="id__c")
     parent_id: str = Field(alias="parent__c")
     detector_type: Optional[str] = Field(default=None, alias="detectorType__c")
     category: Optional[str] = Field(default=None, alias="category__c")
-    value: Optional[float] = Field(default=None, alias="value__c")
-    organization_id: Optional[str] = Field(default=None, alias="internalOrganizationId__c")
+    value: Optional[str] = Field(default=None, alias="value__c")  # String from API, convert to float in analysis
+    timestamp: Optional[str] = Field(default=None, alias="timestamp__c")
+    org_id: Optional[str] = Field(default=None, alias="orgId__c")
+    cloud: Optional[str] = Field(default=None, alias="cloud__c")
 
     class Config:
         populate_by_name = True
@@ -340,24 +360,31 @@ MESSAGE_SCHEMA = pa.schema([
 
 # ============================================================================
 # Quality DMO Schemas (GenAI Content Quality)
+# Note: These DMOs do NOT use ssot__ prefix - different data stream
+# Schema validated against Vivint-DevInt org (Jan 2026)
 # ============================================================================
 
 GENERATION_SCHEMA = pa.schema([
     pa.field("generationId__c", pa.string(), nullable=False),
+    pa.field("generationResponseId__c", pa.string(), nullable=True),
     pa.field("responseText__c", pa.string(), nullable=True),
-    pa.field("modelName__c", pa.string(), nullable=True),
-    pa.field("promptText__c", pa.string(), nullable=True),
-    pa.field("startTimestamp__c", pa.string(), nullable=True),
-    pa.field("endTimestamp__c", pa.string(), nullable=True),
-    pa.field("internalOrganizationId__c", pa.string(), nullable=True),
+    pa.field("maskedResponseText__c", pa.string(), nullable=True),
+    pa.field("responseParameters__c", pa.string(), nullable=True),
+    pa.field("feature__c", pa.string(), nullable=True),
+    pa.field("timestamp__c", pa.string(), nullable=True),
+    pa.field("orgId__c", pa.string(), nullable=True),
+    pa.field("cloud__c", pa.string(), nullable=True),
 ])
 
 CONTENT_QUALITY_SCHEMA = pa.schema([
     pa.field("id__c", pa.string(), nullable=False),
     pa.field("parent__c", pa.string(), nullable=False),
     pa.field("isToxicityDetected__c", pa.string(), nullable=True),
-    pa.field("toxicityScore__c", pa.float64(), nullable=True),
-    pa.field("internalOrganizationId__c", pa.string(), nullable=True),
+    pa.field("contentType__c", pa.string(), nullable=True),
+    pa.field("feature__c", pa.string(), nullable=True),
+    pa.field("timestamp__c", pa.string(), nullable=True),
+    pa.field("orgId__c", pa.string(), nullable=True),
+    pa.field("cloud__c", pa.string(), nullable=True),
 ])
 
 CONTENT_CATEGORY_SCHEMA = pa.schema([
@@ -365,8 +392,10 @@ CONTENT_CATEGORY_SCHEMA = pa.schema([
     pa.field("parent__c", pa.string(), nullable=False),
     pa.field("detectorType__c", pa.string(), nullable=True),
     pa.field("category__c", pa.string(), nullable=True),
-    pa.field("value__c", pa.float64(), nullable=True),
-    pa.field("internalOrganizationId__c", pa.string(), nullable=True),
+    pa.field("value__c", pa.string(), nullable=True),  # Comes as string from API, convert to float in analysis
+    pa.field("timestamp__c", pa.string(), nullable=True),
+    pa.field("orgId__c", pa.string(), nullable=True),
+    pa.field("cloud__c", pa.string(), nullable=True),
 ])
 
 
@@ -383,15 +412,16 @@ SCHEMAS = {
 }
 
 # DMO name mapping
+# Note: Session Tracing DMOs use ssot__ prefix, but GenAI Quality DMOs do NOT
 DMO_NAMES = {
     "sessions": "ssot__AIAgentSession__dlm",
     "interactions": "ssot__AIAgentInteraction__dlm",
     "steps": "ssot__AIAgentInteractionStep__dlm",
     "messages": "ssot__AIAgentMoment__dlm",
-    # Quality DMOs
-    "generations": "ssot__GenAIGeneration__dlm",
-    "content_quality": "ssot__GenAIContentQuality__dlm",
-    "content_categories": "ssot__GenAIContentCategory__dlm",
+    # Quality DMOs (NO ssot__ prefix - different data stream)
+    "generations": "GenAIGeneration__dlm",
+    "content_quality": "GenAIContentQuality__dlm",
+    "content_categories": "GenAIContentCategory__dlm",
 }
 
 # Model class mapping

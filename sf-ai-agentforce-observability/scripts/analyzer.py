@@ -808,7 +808,8 @@ class STDMAnalyzer:
 
         Searches GenAIContentQuality for records where:
         - isToxicityDetected = 'true'
-        - (optionally) toxicityScore >= 0.5
+
+        Also checks GenAIContentCategory for toxicity detectors with high confidence.
 
         Joins back to Steps and Interactions to get session context.
 
@@ -829,7 +830,7 @@ class STDMAnalyzer:
                 "session_id": [],
                 "interaction_id": [],
                 "is_toxic": [],
-                "toxicity_score": [],
+                "confidence": [],
                 "timestamp": [],
             })
 
@@ -840,21 +841,25 @@ class STDMAnalyzer:
             .select([
                 pl.col("parent__c").alias("generation_id"),
                 pl.col("isToxicityDetected__c").alias("is_toxic"),
-                pl.col("toxicityScore__c").alias("toxicity_score"),
+                pl.lit(None).cast(pl.Float64).alias("confidence"),
+                pl.col("timestamp__c").alias("quality_timestamp"),
             ])
         )
 
         # Also check categories for toxicity with high confidence
+        # Note: value__c comes as string from API, cast to float for comparison
         toxic_categories = (
             categories
+            .with_columns(pl.col("value__c").cast(pl.Float64, strict=False).alias("value_float"))
             .filter(
                 (pl.col("detectorType__c") == "Toxicity") &
-                (pl.col("value__c") >= 0.5)
+                (pl.col("value_float") >= 0.5)
             )
             .select([
                 pl.col("parent__c").alias("generation_id"),
                 pl.lit("true").alias("is_toxic"),
-                pl.col("value__c").alias("toxicity_score"),
+                pl.col("value_float").alias("confidence"),
+                pl.col("timestamp__c").alias("quality_timestamp"),
             ])
         )
 
@@ -868,7 +873,7 @@ class STDMAnalyzer:
                 steps.select([
                     pl.col("ssot__GenerationId__c"),
                     pl.col("ssot__AiAgentInteractionId__c"),
-                    pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                    pl.col("ssot__StartTimestamp__c").alias("step_timestamp"),
                 ]),
                 left_on="generation_id",
                 right_on="ssot__GenerationId__c",
@@ -888,8 +893,8 @@ class STDMAnalyzer:
                 "session_id",
                 pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
                 "is_toxic",
-                "toxicity_score",
-                "timestamp",
+                "confidence",
+                pl.coalesce(["quality_timestamp", "step_timestamp"]).alias("timestamp"),
             ])
             .sort("timestamp", descending=True)
             .head(limit)
@@ -925,8 +930,10 @@ class STDMAnalyzer:
                 "timestamp": [],
             })
 
+        # Note: value__c comes as string from API, cast to float
         low_adherence = (
             categories
+            .with_columns(pl.col("value__c").cast(pl.Float64, strict=False).alias("value_float"))
             .filter(
                 (pl.col("detectorType__c") == "InstructionAdherence") &
                 (pl.col("category__c") == "Low")
@@ -934,7 +941,8 @@ class STDMAnalyzer:
             .select([
                 pl.col("parent__c").alias("generation_id"),
                 pl.col("category__c").alias("category"),
-                pl.col("value__c").alias("confidence"),
+                pl.col("value_float").alias("confidence"),
+                pl.col("timestamp__c").alias("cat_timestamp"),
             ])
         )
 
@@ -945,7 +953,7 @@ class STDMAnalyzer:
                 steps.select([
                     pl.col("ssot__GenerationId__c"),
                     pl.col("ssot__AiAgentInteractionId__c"),
-                    pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                    pl.col("ssot__StartTimestamp__c").alias("step_timestamp"),
                 ]),
                 left_on="generation_id",
                 right_on="ssot__GenerationId__c",
@@ -966,7 +974,7 @@ class STDMAnalyzer:
                 pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
                 "category",
                 "confidence",
-                "timestamp",
+                pl.coalesce(["cat_timestamp", "step_timestamp"]).alias("timestamp"),
             ])
             .sort("timestamp", descending=True)
             .head(limit)
@@ -1002,8 +1010,10 @@ class STDMAnalyzer:
                 "timestamp": [],
             })
 
+        # Note: value__c comes as string from API, cast to float
         unresolved = (
             categories
+            .with_columns(pl.col("value__c").cast(pl.Float64, strict=False).alias("value_float"))
             .filter(
                 (pl.col("detectorType__c") == "TaskResolution") &
                 (pl.col("category__c") != "FULLY_RESOLVED")
@@ -1011,7 +1021,8 @@ class STDMAnalyzer:
             .select([
                 pl.col("parent__c").alias("generation_id"),
                 pl.col("category__c").alias("resolution_status"),
-                pl.col("value__c").alias("confidence"),
+                pl.col("value_float").alias("confidence"),
+                pl.col("timestamp__c").alias("cat_timestamp"),
             ])
         )
 
@@ -1022,7 +1033,7 @@ class STDMAnalyzer:
                 steps.select([
                     pl.col("ssot__GenerationId__c"),
                     pl.col("ssot__AiAgentInteractionId__c"),
-                    pl.col("ssot__StartTimestamp__c").alias("timestamp"),
+                    pl.col("ssot__StartTimestamp__c").alias("step_timestamp"),
                 ]),
                 left_on="generation_id",
                 right_on="ssot__GenerationId__c",
@@ -1043,7 +1054,7 @@ class STDMAnalyzer:
                 pl.col("ssot__AiAgentInteractionId__c").alias("interaction_id"),
                 "resolution_status",
                 "confidence",
-                "timestamp",
+                pl.coalesce(["cat_timestamp", "step_timestamp"]).alias("timestamp"),
             ])
             .sort("timestamp", descending=True)
             .head(limit)
