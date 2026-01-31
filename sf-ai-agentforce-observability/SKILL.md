@@ -112,9 +112,30 @@ See [docs/auth-setup.md](docs/auth-setup.md) for detailed instructions.
 
 ---
 
+## T6 Live API Discovery Summary ✅
+
+**Validated: January 30, 2026** | **24 DMOs Found** | **260+ Test Points**
+
+| Category | DMOs | Status |
+|----------|------|--------|
+| **Session Tracing** | 5 | ✅ All Found (Session, Interaction, Step, Message, Participant) |
+| **Agent Optimizer** | 6 | ✅ All Found (Moment, Tag system) |
+| **GenAI Audit** | 13 | ✅ All Found (Generation, Quality, Feedback, Gateway) |
+| **RAG Quality** | 3 | ❌ Not Found (GenAIRetriever* DMOs don't exist) |
+
+**Key Discoveries:**
+- Field naming: API uses `AiAgent` (lowercase 'i'), not `AIAgent`
+- Agent name location: Stored on `Moment`, not `Session`
+- Channel types: `E & O`, `Builder`, `SCRT2 - EmbeddedMessaging`, `Voice`, `NGC`, `Builder: Voice Preview`
+- Agent types: `EinsteinServiceAgent`, `AgentforceEmployeeAgent`, `AgentforceServiceAgent`, `Employee`
+- Participant roles: `USER`, `AGENT` (not Owner/Observer)
+- GenAI detectors: `TOXICITY` (9 categories), `PII` (4 types), `PROMPT_DEFENSE`, `InstructionAdherence`
+
+---
+
 ## Session Tracing Data Model (STDM)
 
-The STDM consists of 4 Data Model Objects (DMOs). **Important**: Field names use `AiAgent` (lowercase 'i'), not `AIAgent`.
+The STDM consists of 5 core DMOs plus 13 GenAI Audit DMOs. **Important**: Field names use `AiAgent` (lowercase 'i'), not `AIAgent`.
 
 ```
 ssot__AIAgentSession__dlm (SESSION)
@@ -167,6 +188,42 @@ ssot__AIAgentMoment__dlm (MOMENT - links to Session, not Interaction)
 - Agent API name is in `AIAgentMoment`, not `AIAgentSession`
 - Moments link to sessions via `AiAgentSessionId`, not interactions
 - All field names use `AiAgent` prefix (lowercase 'i')
+
+### GenAI Trust Layer DMOs (13) ✅ T6 Verified
+
+```
+GenAIGatewayRequest__dlm (30 fields) - LLM request details
+├── gatewayRequestId__c, prompt__c, maskedPrompt__c
+├── model__c, provider__c, temperature__c
+├── promptTokens__c, completionTokens__c, totalTokens__c
+├── enableInputSafetyScoring__c, enableOutputSafetyScoring__c, enablePiiMasking__c
+└── sessionId__c, userId__c, appType__c, feature__c
+
+GenAIGeneration__dlm (11 fields) - LLM output
+├── generationId__c (FK for Steps)
+├── responseText__c, maskedResponseText__c
+└── Links to: AIAgentInteractionStep.ssot__GenerationId__c
+
+GenAIContentQuality__dlm (10 fields) - Trust Layer assessment
+└── isToxicityDetected__c, parent__c (FK to Generation)
+
+GenAIContentCategory__dlm (10 fields) - Detector results
+├── detectorType__c: TOXICITY | PII | PROMPT_DEFENSE | InstructionAdherence
+├── category__c: hate, identity, CREDIT_CARD, EMAIL_ADDRESS, High, Low, etc.
+└── value__c: Confidence score (0.0-1.0)
+
+GenAIFeedback__dlm (16 fields) - User feedback
+├── feedback__c: GOOD | BAD
+└── GenAIFeedbackDetail__dlm (10 fields) - Free-text comments
+```
+
+**Detector Categories (Live API Verified):**
+| Detector | Categories |
+|----------|------------|
+| `TOXICITY` | `hate`, `identity`, `physical`, `profanity`, `safety_score`, `sexual`, `toxicity`, `violence` |
+| `PII` | `CREDIT_CARD`, `EMAIL_ADDRESS`, `PERSON`, `US_PHONE_NUMBER` |
+| `PROMPT_DEFENSE` | `aggregatePromptAttackScore`, `isPromptAttackDetected` |
+| `InstructionAdherence` | `High`, `Low`, `Uncertain` |
 
 See [resources/data-model-reference.md](resources/data-model-reference.md) for full field documentation.
 

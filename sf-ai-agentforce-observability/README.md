@@ -1,10 +1,11 @@
 # sf-ai-agentforce-observability
 
 ![Status: GA](https://img.shields.io/badge/Status-GA-brightgreen)
-![Tests: 233 Passed](https://img.shields.io/badge/Tests-233%20Passed-success)
+![Tests: 260+ Passed](https://img.shields.io/badge/Tests-260%2B%20Passed-success)
+![DMOs: 24 Verified](https://img.shields.io/badge/DMOs-24%20Verified-blue)
 ![Validation: Live API Tested](https://img.shields.io/badge/Validation-Live%20API%20Tested-blue)
 
-Extract and analyze Agentforce session tracing data from Salesforce Data Cloud (Data 360).
+Extract and analyze Agentforce session tracing data from Salesforce Data Cloud.
 
 ## Status: General Availability (GA)
 
@@ -12,10 +13,11 @@ This skill has been validated against live Salesforce orgs and is production-rea
 
 | Metric | Value |
 |--------|-------|
-| **Test Coverage** | 233 tests across 6 tiers |
+| **Test Coverage** | 260+ tests across 6 tiers |
+| **DMO Discovery** | 24 DMOs verified, 3 not found (RAG Quality) |
 | **Live API Validation** | All SQL patterns tested against Data Cloud |
 | **Schema Accuracy** | Verified column names match actual API |
-| **Last Validated** | January 2026 (Vivint-DevInt) |
+| **Last Validated** | January 30, 2026 (Vivint-DevInt) |
 
 ## Features
 
@@ -104,21 +106,45 @@ print(analyzer.message_timeline("a0x..."))
 
 ## Data Model
 
-The Session Tracing Data Model (STDM) consists of 4 core DMOs plus GenAI quality DMOs:
+**24 DMOs verified** via T6 live API testing (January 2026):
 
+### Session Tracing DMOs (5)
 ```
-AIAgentSession (Session)
-├── AIAgentSessionParticipant (Participants)
-├── AIAgentInteraction (Turn)
-│   ├── AIAgentInteractionStep (LLM/Action Step)
-│   │   └── → GenAIGeneration (LLM Output)
-│   │       └── GenAIContentQuality (Trust Layer)
-│   │           └── GenAIContentCategory (Toxicity/Adherence/Resolution)
-│   └── AIAgentInteractionMessage (Raw Messages)
-└── AIAgentMoment (Summaries)
+AIAgentSession (18 fields)
+├── AIAgentSessionParticipant (12 fields) - Roles: USER, AGENT
+├── AIAgentInteraction (20 fields) - Types: TURN, SESSION_END
+│   ├── AIAgentInteractionStep (23 fields) - Types: LLM_STEP, ACTION_STEP, TOPIC_STEP
+│   └── AIAgentInteractionMessage (21 fields) - Types: Input, Output
+└── AIAgentMoment (13 fields) - Contains Agent API name
 ```
 
-**Important**: Data Cloud uses `AiAgent` (lowercase 'i') in column names, not `AIAgent`.
+### GenAI Audit & Feedback DMOs (13) ✅ T6 Verified
+```
+GenAIGatewayRequest (30 fields) - LLM call details, token usage
+├── GenAIGatewayResponse (8 fields)
+├── GenAIGeneration (11 fields) - LLM output text
+│   ├── GenAIContentQuality (10 fields) - Trust Layer assessment
+│   │   └── GenAIContentCategory (10 fields) - Detector results
+│   └── GenAIFeedback (16 fields) - User thumbs up/down
+│       └── GenAIFeedbackDetail (10 fields) - Feedback comments
+└── GenAIGatewayRequestTag, GenAIGtwyRequestMetadata, GenAIGtwyObjRecord...
+```
+
+### Key Enum Values (Live API Verified)
+| Entity | Field | Values |
+|--------|-------|--------|
+| Session | ChannelType | `E & O`, `Builder`, `SCRT2 - EmbeddedMessaging`, `Voice`, `NGC` |
+| Participant | AgentType | `EinsteinServiceAgent`, `AgentforceEmployeeAgent`, `AgentforceServiceAgent` |
+| Participant | Role | `USER`, `AGENT` |
+| Step | StepType | `LLM_STEP`, `ACTION_STEP`, `TOPIC_STEP`, `SESSION_END` |
+| ContentCategory | DetectorType | `TOXICITY`, `PII`, `PROMPT_DEFENSE`, `InstructionAdherence` |
+
+### DMOs NOT Found (3)
+- `GenAIRetrieverResponse__dlm` ❌
+- `GenAIRetrieverRequest__dlm` ❌
+- `GenAIRetrieverQualityMetric__dlm` ❌
+
+**Important**: Data Cloud uses `AiAgent` (lowercase 'i') in field names, not `AIAgent`.
 
 See [resources/data-model-reference.md](resources/data-model-reference.md) for full schema.
 
@@ -167,8 +193,10 @@ This skill includes comprehensive validation testing:
 | T4 | Schema/Documentation | 96 | Field validation, query patterns |
 | T5 | Negative Cases | 12 | Error handling, invalid args |
 | T6 | **Live SQL Execution** | 39 | All SQL patterns against live API |
+| T6 | **DMO Discovery** | 27 | Probe all 27 DMOs for existence |
+| T6 | **Field Discovery** | 47 | Discover all fields per DMO |
 
-**Total: 233 tests | 100% pass rate**
+**Total: 260+ tests | 100% pass rate** (34 discovery tests skip as expected for non-existent DMOs)
 
 Run validation:
 ```bash
