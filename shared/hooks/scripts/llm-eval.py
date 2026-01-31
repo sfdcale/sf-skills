@@ -35,9 +35,23 @@ Note: Requires ANTHROPIC_API_KEY environment variable.
 
 import json
 import os
+import select
 import sys
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 # Try to import Anthropic SDK
 try:
@@ -365,10 +379,9 @@ def format_evaluation_output(result: Dict[str, Any]) -> str:
 
 def main():
     """Main entry point for CLI usage."""
-    try:
-        # Read input from stdin
-        input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
+    # Read input from stdin with timeout to prevent blocking
+    input_data = read_stdin_safe(timeout_seconds=0.1)
+    if not input_data:
         # Check for command line arguments
         if len(sys.argv) < 3:
             print(json.dumps({

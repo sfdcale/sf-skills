@@ -34,10 +34,24 @@ Example hooks.json entry:
 import json
 import os
 import re
+import select
 import subprocess
 import sys
 from pathlib import Path
 from typing import Optional, List, Dict
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 # Get the base directory (shared/hooks/scripts/)
 SCRIPT_DIR = Path(__file__).parent
@@ -253,10 +267,9 @@ def format_output(results: List[Dict], file_path: str) -> str:
 
 def main():
     """Main entry point for the dispatcher."""
-    # Read hook input from stdin
-    try:
-        hook_input = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
+    # Read hook input from stdin with timeout to prevent blocking
+    hook_input = read_stdin_safe(timeout_seconds=0.1)
+    if not hook_input:
         sys.exit(0)
 
     # Extract file path

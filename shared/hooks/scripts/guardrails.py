@@ -50,9 +50,23 @@ Add to .claude/hooks.json:
 import json
 import os
 import re
+import select
 import sys
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 # Configuration
 SCRIPT_DIR = Path(__file__).parent.parent
@@ -325,10 +339,9 @@ def format_warnings(warnings: list[dict]) -> str:
 
 def main():
     """Main entry point for the PreToolUse hook."""
-    try:
-        # Read hook input from stdin
-        input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
+    # Read hook input from stdin with timeout to prevent blocking
+    input_data = read_stdin_safe(timeout_seconds=0.1)
+    if not input_data:
         # No input - allow by default
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}))
         sys.exit(0)

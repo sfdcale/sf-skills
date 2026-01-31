@@ -28,11 +28,25 @@ Installation:
 import json
 import os
 import re
+import select
 import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Dict, Optional, Tuple
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 
 # Configuration
@@ -331,11 +345,8 @@ def _process_hook(input_data: Dict) -> Dict:
 
 def main():
     """Main entry point for the hook."""
-    try:
-        # Read input from stdin
-        input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
-        input_data = {}
+    # Read input from stdin with timeout to prevent blocking
+    input_data = read_stdin_safe(timeout_seconds=0.1)
 
     try:
         output = _process_hook(input_data)

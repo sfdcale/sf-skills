@@ -18,10 +18,24 @@ Called automatically via PostToolUse hook on Write|Edit operations.
 import json
 import os
 import re
+import select
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 # Configuration
 MAX_SUGGESTIONS = 3
@@ -277,11 +291,9 @@ def main():
     # Check for skill name passed as argument
     cli_skill = sys.argv[1] if len(sys.argv) > 1 else None
 
-    try:
-        # Read hook input from stdin
-        input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
-        # If no stdin, exit silently
+    # Read hook input from stdin with timeout to prevent blocking
+    input_data = read_stdin_safe(timeout_seconds=0.1)
+    if not input_data:
         sys.exit(0)
 
     # Get file path from tool input

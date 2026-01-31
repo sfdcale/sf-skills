@@ -27,11 +27,25 @@ Installation:
 
 import json
 import os
+import select
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Tuple
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 
 # Session directory and state file (PID-keyed for multi-session support)
@@ -319,11 +333,8 @@ def main():
     On /clear events, if valid org state exists, we skip re-checking to prevent
     status bar flicker (org hasn't changed, auth is still valid).
     """
-    # Read input from stdin (SessionStart event)
-    try:
-        input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
-        input_data = {}
+    # Read input from stdin (SessionStart event) with timeout to prevent blocking
+    input_data = read_stdin_safe(timeout_seconds=0.1)
 
     # On /clear: skip if we have fresh, valid state
     # This prevents status bar from resetting to "Loading..." unnecessarily

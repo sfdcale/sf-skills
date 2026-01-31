@@ -26,10 +26,24 @@ Installation:
 
 import json
 import re
+import select
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 # Configuration
 SKILL_TIMEOUT_MINUTES = 5  # Grace period after skill invocation
@@ -135,14 +149,10 @@ def format_block_message(file_path: str, suggested_skill: str, file_type: str) -
 
 def main():
     """Main entry point for the PreToolUse hook."""
-    try:
-        hook_input = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
+    # Read hook input from stdin with timeout to prevent blocking
+    hook_input = read_stdin_safe(timeout_seconds=0.1)
+    if not hook_input:
         # No input - allow silently
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}))
-        sys.exit(0)
-    except Exception:
-        # Any other error - allow silently
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}))
         sys.exit(0)
 

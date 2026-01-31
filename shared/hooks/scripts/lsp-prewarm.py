@@ -32,6 +32,7 @@ Prerequisites:
 
 import json
 import os
+import select
 import signal
 import subprocess
 import sys
@@ -39,6 +40,19 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 
 # Configuration
@@ -376,11 +390,8 @@ def main():
     On /clear events, if valid LSP state exists and servers are still running,
     we skip re-prewarming to prevent status bar flicker.
     """
-    # Read input from stdin (SessionStart event)
-    try:
-        input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
-        input_data = {}
+    # Read input from stdin (SessionStart event) with timeout to prevent blocking
+    input_data = read_stdin_safe(timeout_seconds=0.1)
 
     # On /clear: skip if we have fresh, valid state with running servers
     # This prevents status bar from resetting to "Loading..." unnecessarily

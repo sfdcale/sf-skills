@@ -38,9 +38,23 @@ Output: JSON with { "output_message": "..." } for skill suggestions
 
 import json
 import re
+import select
 import sys
 from pathlib import Path
 from typing import Optional
+
+
+def read_stdin_safe(timeout_seconds: float = 0.1) -> dict:
+    """Safely read JSON from stdin with timeout to prevent blocking."""
+    if sys.stdin.isatty():
+        return {}
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], timeout_seconds)
+        if not readable:
+            return {}
+        return json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError, OSError, ValueError):
+        return {}
 
 # Configuration
 MAX_SUGGESTIONS = 3  # Maximum number of skills to suggest
@@ -474,11 +488,9 @@ def format_suggestions(matches: list, chain: Optional[dict], registry: dict,
 
 def main():
     """Main entry point for the UserPromptSubmit hook."""
-    try:
-        # Read hook input from stdin
-        input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
-        # No input or invalid JSON - exit silently
+    # Read hook input from stdin with timeout to prevent blocking
+    input_data = read_stdin_safe(timeout_seconds=0.1)
+    if not input_data:
         sys.exit(0)
 
     # Extract prompt and active files
