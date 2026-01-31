@@ -53,8 +53,8 @@ VERSION_FILE = HOOKS_DIR / "VERSION"
 CACHE_FILE = HOOKS_DIR / ".last-update-check"
 
 # GitHub API endpoint for latest release
-GITHUB_OWNER = "jvalaiyapathy"
-GITHUB_REPO = "claude-code-sfskills"
+GITHUB_OWNER = "Jaganpro"
+GITHUB_REPO = "sf-skills"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
 
 # Marketplace clone location (installed by Claude Code plugin system)
