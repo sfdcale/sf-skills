@@ -7,7 +7,7 @@
 
 A collection of reusable skills for **Agentic Salesforce Development**, enabling AI-powered code generation, validation, testing, debugging, and deployment. Built for Claude Code with planned support for other agentic coding tools.
 
-> **18 skills** • **60+ templates** • **520+ validation points** • **LSP integration**
+> **19 skills** • **60+ templates** • **750+ validation points** • **LSP integration**
 
 ---
 
@@ -268,6 +268,7 @@ python tools/installer.py --cli agentforce-vibes --all
 | 🔗 | **[sf-integration](sf-integration/)** | Callouts, Events, CDC | 🔌 Integration | 120 | 🔬 Alpha |
 | ⚠️ | **[sf-ai-agentforce-legacy](sf-ai-agentforce-legacy/)** | Legacy agent patterns (use sf-ai-agentscript) | 🤖 AI & Automation | 150 | ⚠️ Deprecated |
 | 🧪 | **[sf-ai-agentforce-testing](sf-ai-agentforce-testing/)** | Agent test specs, agentic fix loops | 🤖 AI & Automation | 100 | 🔬 Alpha |
+| 📈 | **[sf-ai-agentforce-observability](sf-ai-agentforce-observability/)** | Session tracing extraction & analysis (Data Cloud) | 🤖 AI & Automation | 233 | ✅ GA |
 | 📝 | **[sf-ai-agentscript](sf-ai-agentscript/)** | Agent Script DSL, FSM patterns, 100-pt scoring (API v65+) | 🤖 AI & Automation | 100 | 🔬 Alpha |
 | 🚀 | **[sf-deploy](sf-deploy/)** | CI/CD automation (sf CLI v2) | 🚀 DevOps | — | 🔬 Alpha |
 | 📊 | **[sf-diagram-mermaid](sf-diagram-mermaid/)** | Mermaid diagrams & ERD | 🛠️ Tooling | — | 🔬 Alpha |
@@ -777,6 +778,7 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 |--|-------|-------------|--------|
 | ⚠️ | `sf-ai-agentforce-legacy` | Legacy agent patterns (deprecated) | ⚠️ Deprecated |
 | 🧪 | `sf-ai-agentforce-testing` | Agent test specs, agentic fix loops | ✅ Live |
+| 📈 | `sf-ai-agentforce-observability` | Session tracing extraction & analysis (Data Cloud) | ✅ GA |
 | 📝 | `sf-ai-agentscript` | Agent Script DSL, FSM patterns, 100-pt scoring | ✅ Live |
 | 🧠 | `sf-ai-copilot` | Einstein Copilot, Prompts | 📋 Planned |
 | 🔮 | `sf-ai-einstein` | Prediction Builder, NBA | 📋 Planned |
@@ -801,7 +803,7 @@ sf-industry-{name}        # Industries (healthcare, finserv)
 | 🏦 | `sf-industry-finserv` | KYC, AML, Wealth Management | 📋 Planned |
 | 💵 | `sf-industry-revenue` | CPQ, Billing, Revenue Lifecycle | 📋 Planned |
 
-**Total: 28 skills** (18 skills ✅ live, 10 planned 📋)
+**Total: 29 skills** (19 skills ✅ live, 10 planned 📋)
 
 </details>
 
