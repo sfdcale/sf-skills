@@ -56,6 +56,7 @@ GITHUB_RAW_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO
 # Files to install
 SKILLS_GLOB = "sf-*"  # All skill directories
 HOOKS_DIR = "shared/hooks"
+LSP_ENGINE_DIR = "shared/lsp-engine"
 SKILLS_REGISTRY = "shared/hooks/skills-registry.json"
 
 # Temp file patterns to clean
@@ -750,6 +751,36 @@ def copy_tools(source_dir: Path, target_dir: Path) -> int:
     return sum(1 for _ in target_dir.rglob("*") if _.is_file())
 
 
+def copy_lsp_engine(source_dir: Path, target_dir: Path) -> int:
+    """
+    Copy LSP engine directory (wrapper scripts for Apex, LWC, AgentScript LSPs).
+
+    The lsp-engine contains shell wrapper scripts that interface with VS Code's
+    Salesforce extensions to provide real-time syntax validation.
+
+    Args:
+        source_dir: Source lsp-engine directory
+        target_dir: Target lsp-engine directory
+
+    Returns:
+        Number of files copied
+    """
+    if not source_dir.exists():
+        return 0
+
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
+
+    shutil.copytree(source_dir, target_dir)
+
+    # Make wrapper scripts executable
+    for script in target_dir.glob("*.sh"):
+        script.chmod(script.stat().st_mode | 0o111)
+
+    # Count files
+    return sum(1 for _ in target_dir.rglob("*") if _.is_file())
+
+
 def write_fingerprint(version: str, source: str = "github"):
     """Write installation fingerprint file."""
     fingerprint = {
@@ -849,6 +880,21 @@ def verify_installation() -> Tuple[bool, List[str]]:
             if not (hooks_dir / script).exists():
                 issues.append(f"Missing: hooks/{script}")
 
+    # Check lsp-engine directory
+    lsp_dir = INSTALL_DIR / "lsp-engine"
+    if not lsp_dir.exists():
+        issues.append("Missing lsp-engine directory")
+    else:
+        # Check key wrapper scripts
+        required_wrappers = [
+            "apex_wrapper.sh",
+            "lwc_wrapper.sh",
+            "agentscript_wrapper.sh"
+        ]
+        for wrapper in required_wrappers:
+            if not (lsp_dir / wrapper).exists():
+                issues.append(f"Missing: lsp-engine/{wrapper}")
+
     # Check settings.json has hooks
     if SETTINGS_FILE.exists():
         try:
@@ -898,6 +944,7 @@ def cmd_install(dry_run: bool = False, force: bool = False, called_from_bash: bo
   📦 WHAT WILL BE INSTALLED:
      • 18 Salesforce skills (sf-apex, sf-flow, sf-metadata, ...)
      • 14 hook scripts (guardrails, auto-approval, validation)
+     • LSP engine (Apex, LWC, AgentScript language servers)
      • Automatic skill suggestions and workflow orchestration
 
   📍 INSTALL LOCATION:
@@ -986,8 +1033,8 @@ def cmd_install(dry_run: bool = False, force: bool = False, called_from_bash: bo
         else:
             print_step(2, 5, "No existing installations found", "done")
 
-        # Step 3: Install skills and hooks
-        print_step(3, 5, "Installing skills and hooks...", "...")
+        # Step 3: Install skills, hooks, and LSP engine
+        print_step(3, 5, "Installing skills, hooks, and LSP engine...", "...")
 
         if not dry_run:
             INSTALL_DIR.mkdir(parents=True, exist_ok=True)
@@ -1001,6 +1048,11 @@ def cmd_install(dry_run: bool = False, force: bool = False, called_from_bash: bo
             hooks_target = INSTALL_DIR / "hooks"
             hook_count = copy_hooks(hooks_source, hooks_target)
 
+            # Copy LSP engine (wrapper scripts for Apex, LWC, AgentScript LSPs)
+            lsp_source = source_dir / "shared" / "lsp-engine"
+            lsp_target = INSTALL_DIR / "lsp-engine"
+            lsp_count = copy_lsp_engine(lsp_source, lsp_target)
+
             # Copy tools (includes install.py for local updates)
             tools_source = source_dir / "tools"
             tools_target = INSTALL_DIR / "tools"
@@ -1013,11 +1065,12 @@ def cmd_install(dry_run: bool = False, force: bool = False, called_from_bash: bo
             # Touch all files
             touch_all_files(INSTALL_DIR)
 
-            print_step(3, 5, "Skills and hooks installed", "done")
+            print_step(3, 5, "Skills, hooks, and LSP engine installed", "done")
             print_substep(f"{skill_count} skills installed")
             print_substep(f"{hook_count} hook scripts installed")
+            print_substep(f"{lsp_count} LSP engine files installed")
         else:
-            print_step(3, 5, "Would install skills and hooks", "skip")
+            print_step(3, 5, "Would install skills, hooks, and LSP engine", "skip")
 
         # Step 4: Configure Claude Code
         print_step(4, 5, "Configuring Claude Code...", "...")
@@ -1250,6 +1303,14 @@ def cmd_status() -> int:
     if hooks_dir.exists():
         hook_count = sum(1 for _ in hooks_dir.rglob("*.py"))
         print(f"Hooks:       {hook_count} scripts")
+
+    # Check LSP engine
+    lsp_dir = INSTALL_DIR / "lsp-engine"
+    if lsp_dir.exists():
+        wrapper_count = sum(1 for _ in lsp_dir.glob("*_wrapper.sh"))
+        print(f"LSP Engine:  {wrapper_count} wrappers (Apex, LWC, AgentScript)")
+    else:
+        print(f"LSP Engine:  {c('⚠️ Not installed', Colors.YELLOW)}")
 
     # Check settings.json
     if SETTINGS_FILE.exists():
