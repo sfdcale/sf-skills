@@ -95,16 +95,34 @@ sf-apex/
 **One-liner install:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Jaganpro/sf-skills/main/tools/install.py | python3
+curl -sSL https://raw.githubusercontent.com/Jaganpro/sf-skills/main/tools/install.sh | bash
 ```
 
-That's it! The installer will:
-- Download the latest release from GitHub
-- Install 18 skills and 16 hook scripts to `~/.claude/sf-skills/`
-- Configure Claude Code automatically (updates `~/.claude/settings.json`)
-- Clean up any previous installations (marketplace or legacy)
+That's it! The newbie-friendly installer will:
+- **Check your system** (macOS, Python version, terminal type)
+- **Install missing dependencies** (offers to install Homebrew, Python 3.12+ if needed)
+- **Detect optional tools** (Salesforce CLI, Java, Node.js)
+- **Install sf-skills** to `~/.claude/sf-skills/` (18 skills + 16 hook scripts)
+- **Configure Claude Code** automatically (updates `~/.claude/settings.json`)
+- **Show next steps** with a helpful checklist
 
 **Restart Claude Code** after installation to activate hooks.
+
+#### Manual Installation
+
+If you prefer to review the script first:
+
+```bash
+curl -O https://raw.githubusercontent.com/Jaganpro/sf-skills/main/tools/install.sh
+chmod +x install.sh
+./install.sh
+```
+
+Or run the Python installer directly (skips pre-flight checks):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Jaganpro/sf-skills/main/tools/install.py | python3
+```
 
 #### Managing Your Installation
 

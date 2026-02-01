@@ -797,17 +797,24 @@ def verify_installation() -> Tuple[bool, List[str]]:
 # MAIN COMMANDS
 # ============================================================================
 
-def cmd_install(dry_run: bool = False, force: bool = False) -> int:
+def cmd_install(dry_run: bool = False, force: bool = False, called_from_bash: bool = False) -> int:
     """
     Install sf-skills.
+
+    Args:
+        dry_run: Preview changes without applying
+        force: Skip confirmation prompts
+        called_from_bash: Suppress redundant output (bash wrapper handles UX)
 
     Returns:
         Exit code (0 = success)
     """
-    print_banner()
+    # When called from bash wrapper, skip banner and intro (bash handles it)
+    if not called_from_bash:
+        print_banner()
 
-    # Show what will be installed
-    print("""
+        # Show what will be installed
+        print("""
   📦 WHAT WILL BE INSTALLED:
      • 18 Salesforce skills (sf-apex, sf-flow, sf-metadata, ...)
      • 14 hook scripts (guardrails, auto-approval, validation)
@@ -967,7 +974,16 @@ def cmd_install(dry_run: bool = False, force: bool = False) -> int:
 
     # Success message
     if not dry_run:
-        print(f"""
+        if called_from_bash:
+            # Brief message when called from bash (bash wrapper shows detailed next steps)
+            print(f"""
+{c('✅ sf-skills installed successfully!', Colors.GREEN)}
+   Version:  {version}
+   Location: ~/.claude/sf-skills/
+""")
+        else:
+            # Full message when run directly
+            print(f"""
 ═══════════════════════════════════════════════════════════════════
 {c('✅ Installation complete!', Colors.GREEN)}
 
@@ -1224,6 +1240,8 @@ Curl one-liner:
                         help="Preview changes without applying")
     parser.add_argument("--force", "-f", action="store_true",
                         help="Skip confirmation prompts")
+    parser.add_argument("--called-from-bash", action="store_true",
+                        help="Called from bash wrapper (suppress redundant output)")
     parser.add_argument("--version", action="version",
                         version=f"sf-skills installer v{VERSION}")
 
@@ -1243,7 +1261,11 @@ Curl one-liner:
     elif args.update:
         sys.exit(cmd_update(dry_run=args.dry_run, force=args.force))
     else:
-        sys.exit(cmd_install(dry_run=args.dry_run, force=args.force))
+        sys.exit(cmd_install(
+            dry_run=args.dry_run,
+            force=args.force,
+            called_from_bash=args.called_from_bash
+        ))
 
 
 if __name__ == "__main__":
