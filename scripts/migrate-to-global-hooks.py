@@ -115,14 +115,6 @@ def get_global_hooks_template() -> Dict[str, Any]:
                 {
                     "hooks": [{
                         "type": "command",
-                        "command": f"python3 {hooks_path}/scripts/session-update-check.py",
-                        "timeout": 5000
-                    }],
-                    "_sf_skills": True
-                },
-                {
-                    "hooks": [{
-                        "type": "command",
                         "command": f"python3 {hooks_path}/scripts/session-init.py",
                         "timeout": 3000
                     }],
@@ -594,7 +586,6 @@ def verify_installation(verbose: bool = False) -> bool:
     else:
         # Check key scripts exist
         required_scripts = [
-            "scripts/session-update-check.py",
             "scripts/session-init.py",
             "scripts/guardrails.py",
             "scripts/auto-approve.py",

@@ -180,7 +180,6 @@ SF_SKILLS_HOOKS: Dict[str, Any] = {
 # Script filename → (short_description, emoji)
 # Note: Descriptions should be ≤35 chars to fit in status table
 HOOK_DESCRIPTIONS = {
-    "session-update-check.py": ("Check for sf-skills updates", "🔄"),
     "guardrails.py": ("Block dangerous DML, fix SOQL", "🛡️"),
     "api-version-check.py": ("Validate API version on deploy", "📋"),
     "skill-enforcement.py": ("Require skill for SF file edits", "🔐"),
@@ -217,14 +216,6 @@ def get_global_hooks_config() -> Dict[str, Any]:
 
     return {
         "SessionStart": [
-            {
-                "hooks": [{
-                    "type": "command",
-                    "command": f"python3 {hooks_path}/scripts/session-update-check.py",
-                    "timeout": 5000
-                }],
-                "_sf_skills": True
-            },
             {
                 "hooks": [{
                     "type": "command",
@@ -641,7 +632,6 @@ def remove_sf_skills_hooks(settings: Dict[str, Any], verbose: bool = False) -> D
 def verify_scripts_exist() -> bool:
     """Verify all hook scripts exist."""
     scripts = [
-        PLUGIN_ROOT / "shared/hooks/scripts/session-update-check.py",
         PLUGIN_ROOT / "shared/hooks/scripts/guardrails.py",
         PLUGIN_ROOT / "shared/hooks/scripts/validator-dispatcher.py",
         PLUGIN_ROOT / "shared/hooks/scripts/auto-approve.py",

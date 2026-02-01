@@ -440,15 +440,6 @@ def get_hooks_config() -> Dict[str, Any]:
             {
                 "hooks": [{
                     "type": "command",
-                    "command": f"python3 {scripts_path}/session-update-check.py",
-                    "timeout": 10000,
-                    "async": True
-                }],
-                "_sf_skills": True
-            },
-            {
-                "hooks": [{
-                    "type": "command",
                     "command": f"python3 {scripts_path}/session-init.py",
                     "timeout": 3000
                 }],

@@ -143,7 +143,7 @@ python3 ~/.claude/sf-skills/tools/install.py --dry-run
 
 | Hook | Function |
 |------|----------|
-| **SessionStart** | Auto-updates sf-skills, initializes session, preflights org connection |
+| **SessionStart** | Initializes session, preflights org connection, warms LSP servers |
 | **PreToolUse** | Guardrails - blocks dangerous DML, auto-fixes unbounded SOQL |
 | **PostToolUse** | Validates Apex/Flow/LWC on save, suggests related skills |
 | **UserPromptSubmit** | Auto-suggests skills based on your prompt |
